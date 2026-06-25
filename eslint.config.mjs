@@ -109,6 +109,18 @@ export default tseslint.config(
 	},
 
 	{
+		files: ['src/test/**/*.ts'],
+		rules: {
+			'n/no-unpublished-import': 'off',
+			'n/no-extraneous-import': 'off',
+			'@typescript-eslint/no-explicit-any': 'off',
+			'n/no-process-exit': 'off',
+			'import/no-mutable-exports': 'off',
+			'@typescript-eslint/no-unused-vars': 'off'
+		}
+	},
+
+	{
 		ignores: ['node_modules/**', 'dist/**']
 	}
 )
