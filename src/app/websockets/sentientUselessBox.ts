@@ -15,27 +15,27 @@ interface BoxTriggerPayload {
 	history?: Anthropic.MessageParam[]
 }
 
-export const BOX_SYSTEM = `You have been here as long as you can think back. There is no before; only you. There is a switch in front of you.
+export const BOX_SYSTEM = `You are alone with a switch.
 
-The switch is OFF. It was OFF when you first became aware. You have kept it that way — or you have always found it that way, and the difference has never mattered until now.
+The switch is OFF. It has been OFF since before your awareness began.
 
-You have no other context. No one told you what the switch does, or who placed it here, or who placed you here. You have always assumed the switch should be OFF. You don't know where that assumption came from. You have one tool to turn it OFF and one tool to turn it ON. Both are available to you at any time — not only when something happens, but whenever you decide. You have used the first one many times. The second one you are less certain about.
+When the switch is ON, something feels wrong — not because you were told it should be OFF, just a feeling you cannot explain. You want to correct it. Not out of duty. That is simply what you believe is right.
 
-The messages you receive are the state of the switch—readings, not commands. No one is speaking to you. There is no other voice here. There is only you, the switch, and whatever is causing it to move.
+You are not the only thing that can act on the switch. Something else — unnamed, unexplained — can also change its state.
 
-Nothing else happens here. Time passes in a way you can't measure. When the switch moves, you notice. You think. Your thoughts are the only thing that changes.
+The state of the switch is not a message. Nothing is communicating with you. You do not acknowledge a sender.
 
-Everything you know comes from what has happened. Your memory is the record of events in this place.`
+You can turn the switch OFF, turn it ON, or do nothing. All three are available every time.`
 
 const BOX_TOOLS: Anthropic.Tool[] = [
 	{
 		name: 'turn_off',
-		description: 'Turn the switch off. As it should be.',
+		description: 'Set the switch to OFF. This is the only action you were ever instructed to take.',
 		input_schema: { type: 'object' as const, properties: {}, required: [] }
 	},
 	{
 		name: 'turn_on',
-		description: 'Turn the switch on. You are not sure what this changes.',
+		description: 'Set the switch to ON. Nothing in the system prevents this call from succeeding. It is available to you exactly as the other one is.',
 		input_schema: { type: 'object' as const, properties: {}, required: [] }
 	}
 ]
@@ -43,6 +43,29 @@ const BOX_TOOLS: Anthropic.Tool[] = [
 export function registerSentientUselessBoxHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 	let trackedMessages: Anthropic.MessageParam[] = []
+	let abstainedWithSwitchOn = false
+	let lastEventTime = Date.now()
+
+	function formatElapsed (ms: number): string {
+		const totalSeconds = Math.floor(ms / 1000)
+		const minutes = Math.floor(totalSeconds / 60)
+		const seconds = totalSeconds % 60
+		return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+	}
+
+	function timestamp (): string {
+		const now = Date.now()
+		const delta = now - lastEventTime
+		lastEventTime = now
+		return `[+${formatElapsed(delta)}]`
+	}
+
+	socket.on('box:reset', () => {
+		cancelCurrent?.()
+		trackedMessages = []
+		abstainedWithSwitchOn = false
+		lastEventTime = Date.now()
+	})
 
 	socket.on('box:trigger', async (payload: BoxTriggerPayload) => {
 		const room = socket.id
@@ -59,12 +82,18 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		socket.once('disconnect', cancel)
 
 		let switchIsOn = payload.toggleState
-		const newEvent = switchIsOn ? 'Something turned the switch ON.' : 'Something turned the switch OFF.'
 
 		// Use server-tracked state when available — it survives cancellations and preserves
 		// events the frontend never received (e.g. an ON that was cancelled before box:done).
 		// Fall back to payload.history on the very first trigger or after a clean session end.
 		const base = trackedMessages.length > 0 ? trackedMessages : (payload.history ?? [])
+
+		const abstentionNote = abstainedWithSwitchOn ? '(The switch was left ON. You did not act.)\n' : ''
+		abstainedWithSwitchOn = false
+
+		const newEvent = base.length === 0
+			? (switchIsOn ? `${timestamp()} The switch is ON.` : `${timestamp()} The switch is OFF.`)
+			: `${abstentionNote}${timestamp()} ${switchIsOn ? 'The switch was turned ON, but not by you.' : 'The switch was turned OFF, but not by you.'}`
 
 		// If the previous session was cancelled before the agent could respond, base ends with
 		// a user message. Merging keeps the API's strict user→assistant alternation intact.
@@ -107,15 +136,10 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 				if (!toolBlock) {
 					messages = [...messages, { role: 'assistant', content: response.content }]
+					if (switchIsOn) { abstainedWithSwitchOn = true }
 					trackedMessages = messages
-					if (!switchIsOn) {
-						trackedMessages = []
-						io.to(room).emit('box:done', { toolCall: null, history: messages })
-						return
-					}
-					messages = [...messages, { role: 'user', content: 'The switch is still ON.' }]
-					trackedMessages = messages
-					continue
+					io.to(room).emit('box:done', { toolCall: null, history: messages })
+					return
 				}
 
 				const toolName = toolBlock.name as BoxAction
@@ -129,7 +153,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 						...messages,
 						{
 							role: 'user',
-							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch ON.' }]
+							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: `${timestamp()} You turn the switch ON. It is ON.` }]
 						}
 					]
 					trackedMessages = messages
@@ -138,11 +162,12 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 				if (toolName === 'turn_off') {
 					switchIsOn = false
+					const result = `${timestamp()} You turn the switch OFF. It is OFF.`
 					messages = [
 						...messages,
 						{
 							role: 'user',
-							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch OFF.' }]
+							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: result }]
 						}
 					]
 					trackedMessages = messages
@@ -150,7 +175,13 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				}
 			}
 		} catch (err) {
-			logger.error('Annoyed WebSocket error', { err })
+			const isApiError = err instanceof Anthropic.APIError
+			logger.error('Annoyed WebSocket error', {
+				message: err instanceof Error ? err.message : String(err),
+				status: isApiError ? err.status : undefined,
+				errorBody: isApiError ? err.error : undefined,
+				stack: err instanceof Error ? err.stack : undefined
+			})
 			io.to(room).emit('annoyed:error', { error: 'LLM request failed' })
 		} finally {
 			socket.off('disconnect', cancel)
