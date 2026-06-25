@@ -5,6 +5,7 @@
 		"build": "tsc",
 		"start": "node \"index.js\"",
 		"dev": "(if exist dist rmdir /s /q dist) & tsc && node --env-file .env \"dist/development/index.js\"",
+		"test:development": "mocha --reporter spec --recursive \"dist/test/development/**/*.spec.js\"",
 		"lint": "npx eslint \"**/*.ts\"",
 		"lint:fix": "npx eslint \"**/*.ts\" --fix",
 		"spellcheck": "npx cspell ."
@@ -30,6 +31,7 @@
 		"@types/cors": "^2.8.19",
 		"@types/eslint": "^9.6.1",
 		"@types/express": "^5.0.6",
+		"@types/mocha": "^10.0.10",
 		"@types/node": "^26.0.0",
 		"cspell": "^9.0.0",
 		"eslint": "^9.39.1",
@@ -38,6 +40,7 @@
 		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-n": "^17.21.0",
 		"eslint-plugin-promise": "^7.2.1",
+		"mocha": "^11.7.6",
 		"typescript": "^6.0.0",
 		"typescript-eslint": "^8.35.0"
 	}
