@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: backend-ingress
+    namespace: portfolio-production
+    annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        # WebSocket support
+        nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+        nginx.ingress.kubernetes.io/upgrade: "websocket"
+        nginx.ingress.kubernetes.io/connection: "upgrade"
+        # Timeout settings (ensure they exceed Socket.IO's defaults)
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+        # Sticky sessions based on cookies
+        nginx.ingress.kubernetes.io/affinity: "cookie"
+        nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+        nginx.ingress.kubernetes.io/session-cookie-same-site: "Lax"
+        nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+spec:
+    ingressClassName: nginx
+    tls:
+        -   hosts:
+                - rasmus.haversen.dk
+            secretName: backend-tls
+    rules:
+        -   host: rasmus.haversen.dk
+            http:
+                paths:
+                    # API Path
+                    -   path: /api/
+                        pathType: Prefix
+                        backend:
+                            service:
+                                name: backend-service
+                                port:
+                                    number: 80
+                    # WebSocket Path
+                    -   path: /socket.io/
+                        pathType: Prefix
+                        backend:
+                            service:
+                                name: backend-service
+                                port:
+                                    number: 80

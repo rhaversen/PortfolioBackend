@@ -1,0 +1,26 @@
+{
+    "version": "0.2",
+    "language": "en-US",
+    "ignorePaths": [
+        "node_modules/**",
+        ".idea/**",
+        ".vscode/**",
+        ".git/**",
+        ".github/**",
+        "**/*.svg",
+        "Dockerfile",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "dist/**"
+    ],
+    "ignoreWords": [
+        "readyz",
+        "livez",
+        "anthropic",
+        "openai",
+        "prefill",
+        "brainwash",
+        "brainwashing"
+    ]
+}
