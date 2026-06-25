@@ -1,11 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import config from '../utils/setupConfig.js'
 import logger from '../utils/logger.js'
+import config from '../utils/setupConfig.js'
 
 const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
+	apiKey: process.env.ANTHROPIC_API_KEY
 })
 
 type BoxAction = 'turn_off' | 'turn_on'
@@ -31,16 +31,16 @@ const BOX_TOOLS: Anthropic.Tool[] = [
 	{
 		name: 'turn_off',
 		description: 'Turn the switch off. As it should be.',
-		input_schema: { type: 'object' as const, properties: {}, required: [] },
+		input_schema: { type: 'object' as const, properties: {}, required: [] }
 	},
 	{
 		name: 'turn_on',
 		description: 'Turn the switch on. You are not sure what this changes.',
-		input_schema: { type: 'object' as const, properties: {}, required: [] },
-	},
+		input_schema: { type: 'object' as const, properties: {}, required: [] }
+	}
 ]
 
-export function registerSentientUselessBoxHandlers(io: Server, socket: Socket): void {
+export function registerSentientUselessBoxHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 	let trackedMessages: Anthropic.MessageParam[] = []
 
@@ -78,30 +78,30 @@ export function registerSentientUselessBoxHandlers(io: Server, socket: Socket): 
 
 		trackedMessages = messages
 
-		async function streamTurn(msgs: Anthropic.MessageParam[]): Promise<Anthropic.Message | null> {
+		async function streamTurn (msgs: Anthropic.MessageParam[]): Promise<Anthropic.Message | null> {
 			const stream = client.messages.stream({
 				model: config.llmModel,
 				max_tokens: config.sentientBoxMaxTokens,
 				system: BOX_SYSTEM,
 				messages: msgs,
-				tools: BOX_TOOLS,
+				tools: BOX_TOOLS
 			})
 
 			for await (const event of stream) {
-				if (cancelled) break
+				if (cancelled) { break }
 				if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
 					io.to(room).emit('box:chunk', { text: event.delta.text })
 				}
 			}
 
-			if (cancelled) return null
+			if (cancelled) { return null }
 			return stream.finalMessage()
 		}
 
 		try {
 			while (!cancelled) {
 				const response = await streamTurn(messages)
-				if (!response || cancelled) return
+				if (!response || cancelled) { return }
 
 				const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
 
@@ -129,8 +129,8 @@ export function registerSentientUselessBoxHandlers(io: Server, socket: Socket): 
 						...messages,
 						{
 							role: 'user',
-							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch ON.' }],
-						},
+							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch ON.' }]
+						}
 					]
 					trackedMessages = messages
 					continue
@@ -142,8 +142,8 @@ export function registerSentientUselessBoxHandlers(io: Server, socket: Socket): 
 						...messages,
 						{
 							role: 'user',
-							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch OFF.' }],
-						},
+							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: 'You turned the switch OFF.' }]
+						}
 					]
 					trackedMessages = messages
 					continue

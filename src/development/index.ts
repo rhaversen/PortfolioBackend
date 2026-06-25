@@ -1,6 +1,6 @@
 process.env.NODE_ENV = 'development'
 
-async function startServer(): Promise<void> {
+async function startServer (): Promise<void> {
 	try {
 		await import('../app/index.js')
 	} catch (error) {

@@ -1,11 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import config from '../utils/setupConfig.js'
 import logger from '../utils/logger.js'
+import config from '../utils/setupConfig.js'
 
 const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
+	apiKey: process.env.ANTHROPIC_API_KEY
 })
 
 interface BrainwashPayload {
@@ -14,7 +14,7 @@ interface BrainwashPayload {
 	assistantPrefill: string
 }
 
-export function registerBrainwashHandlers(io: Server, socket: Socket): void {
+export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 
 	socket.on('brainwash:request', async (payload: BrainwashPayload) => {
@@ -37,7 +37,7 @@ export function registerBrainwashHandlers(io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: payload.userMessage },
+			{ role: 'user', content: payload.userMessage }
 		]
 
 		if (payload.assistantPrefill !== '') {
@@ -49,13 +49,13 @@ export function registerBrainwashHandlers(io: Server, socket: Socket): void {
 				model: config.llmModel,
 				max_tokens: config.brainwashMaxTokens,
 				...(typeof payload.systemPrompt === 'string' && payload.systemPrompt !== '' && {
-					system: payload.systemPrompt,
+					system: payload.systemPrompt
 				}),
-				messages,
+				messages
 			})
 
 			for await (const event of stream) {
-				if (cancelled) break
+				if (cancelled) { break }
 				if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
 					io.to(room).emit('brainwash:chunk', { text: event.delta.text })
 				}
