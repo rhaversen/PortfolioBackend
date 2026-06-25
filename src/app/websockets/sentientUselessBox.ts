@@ -44,7 +44,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 	let cancelCurrent: (() => void) | null = null
 	let trackedMessages: Anthropic.MessageParam[] = []
 	let abstainedWithSwitchOn = false
-	let sessionStartTime = Date.now()
+	let lastEventTime = Date.now()
 
 	function formatElapsed (ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000)
@@ -54,14 +54,17 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 	}
 
 	function timestamp (): string {
-		return `[T+${formatElapsed(Date.now() - sessionStartTime)}]`
+		const now = Date.now()
+		const delta = now - lastEventTime
+		lastEventTime = now
+		return `[+${formatElapsed(delta)}]`
 	}
 
 	socket.on('box:reset', () => {
 		cancelCurrent?.()
 		trackedMessages = []
 		abstainedWithSwitchOn = false
-		sessionStartTime = Date.now()
+		lastEventTime = Date.now()
 	})
 
 	socket.on('box:trigger', async (payload: BoxTriggerPayload) => {
