@@ -1,0 +1,17 @@
+{
+	"apiLimiter": {
+		"windowMs": 60000,
+		"max": 1000
+	},
+	"expressPort": 5001,
+	"cors": {
+		"origin": "http://localhost:3000",
+		"credentials": true
+	},
+	"llm": {
+		"model": "claude-haiku-4-5",
+		"maxTokens": 2048,
+		"brainwashMaxTokens": 512,
+		"sentientBoxMaxTokens": 512
+	}
+}
