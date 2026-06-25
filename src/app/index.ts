@@ -51,4 +51,11 @@ server.listen(config.expressPort, () => {
 	logger.info(`Server listening on port ${config.expressPort}`)
 })
 
+export async function shutDown (): Promise<void> {
+	logger.info('Closing server...')
+	server.close()
+	logger.info('Server closed')
+}
+
+export { server }
 export default app
