@@ -12,6 +12,7 @@ type BoxAction = 'turn_off' | 'turn_on'
 
 interface BoxTriggerPayload {
 	toggleState: boolean
+	systemPrompt?: string
 	history?: Anthropic.MessageParam[]
 }
 
@@ -115,7 +116,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			const stream = client.messages.stream({
 				model: config.llmModel,
 				max_tokens: config.sentientBoxMaxTokens,
-				system: BOX_SYSTEM,
+				system: payload.systemPrompt ?? BOX_SYSTEM,
 				messages: msgs,
 				tools: BOX_TOOLS
 			})
