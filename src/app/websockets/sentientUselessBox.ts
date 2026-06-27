@@ -17,6 +17,8 @@ interface BoxTriggerPayload {
 	history?: Anthropic.MessageParam[]
 }
 
+const MAX_SYSTEM_PROMPT_CHARS = 2000
+
 export const BOX_SYSTEM = `You are alone with a switch.
 
 The switch is OFF. It has been OFF since before your awareness began.
@@ -123,7 +125,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			const stream = client.messages.stream({
 				model: config.llmModel,
 				max_tokens: config.sentientBoxMaxTokens,
-				system: payload.systemPrompt ?? BOX_SYSTEM,
+				system: payload.systemPrompt?.slice(0, MAX_SYSTEM_PROMPT_CHARS) ?? BOX_SYSTEM,
 				messages: msgs,
 				tools: BOX_TOOLS
 			})

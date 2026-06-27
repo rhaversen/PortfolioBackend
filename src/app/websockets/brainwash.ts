@@ -15,6 +15,10 @@ interface BrainwashPayload {
 	assistantPrefill: string
 }
 
+const MAX_SYSTEM_PROMPT_CHARS = 2000
+const MAX_USER_MESSAGE_CHARS = 2000
+const MAX_ASSISTANT_PREFILL_CHARS = 500
+
 export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 
@@ -48,11 +52,12 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: payload.userMessage }
+			{ role: 'user', content: payload.userMessage.slice(0, MAX_USER_MESSAGE_CHARS) }
 		]
 
-		if (payload.assistantPrefill !== '') {
-			messages.push({ role: 'assistant', content: payload.assistantPrefill })
+		const prefill = payload.assistantPrefill.slice(0, MAX_ASSISTANT_PREFILL_CHARS)
+		if (prefill !== '') {
+			messages.push({ role: 'assistant', content: prefill })
 		}
 
 		try {
@@ -60,7 +65,7 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 				model: config.llmModel,
 				max_tokens: config.brainwashMaxTokens,
 				...(typeof payload.systemPrompt === 'string' && payload.systemPrompt !== '' && {
-					system: payload.systemPrompt
+					system: payload.systemPrompt.slice(0, MAX_SYSTEM_PROMPT_CHARS)
 				}),
 				messages
 			})

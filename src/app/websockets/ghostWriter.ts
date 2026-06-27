@@ -15,6 +15,8 @@ interface PredictPayload {
 	maxTokens?: number
 }
 
+const MAX_COMPLETION_TEXT_CHARS = 3000
+
 export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 	const active = new Map<string, () => void>() // requestId → cancel
 
@@ -49,7 +51,7 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		const requestedTokens = typeof payload.maxTokens === 'number' ? payload.maxTokens : 24
 		const maxTokens = Math.min(Math.max(requestedTokens, 1), config.ghostWriterMaxTokens)
 
-		const trimmed = payload.text.trimEnd()
+		const trimmed = payload.text.trimEnd().slice(-MAX_COMPLETION_TEXT_CHARS)
 
 		try {
 			const stream = client.messages.stream({
