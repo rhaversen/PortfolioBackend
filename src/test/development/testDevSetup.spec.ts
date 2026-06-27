@@ -8,7 +8,6 @@ describe('Development Setup', function () {
 
 	after(function () {
 		setTimeout(() => {
-			// eslint-disable-next-line n/no-process-exit
 			process.exit()
 		}, 5000)
 	})
