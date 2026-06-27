@@ -17,6 +17,10 @@ interface BrainwashPayload {
 export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 
+	socket.on('brainwash:cancel', () => {
+		cancelCurrent?.()
+	})
+
 	socket.on('brainwash:request', async (payload: BrainwashPayload) => {
 		const room = socket.id
 
