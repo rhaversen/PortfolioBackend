@@ -30,8 +30,9 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 		const room = socket.id
 		const ip = getSocketIp(socket)
 
-		if (!checkBudgetAvailable(ip)) {
-			io.to(room).emit('brainwash:error', { error: 'Rate limit exceeded, please try again later' })
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('brainwash:error', { error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
 			return
 		}
 

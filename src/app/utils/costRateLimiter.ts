@@ -43,6 +43,13 @@ export class CostRateLimiter {
 		const entry = this.getEntry(ip, this.now())
 		return Math.max(0, this.maxCost - entry.usedCost)
 	}
+
+	retryAfterMs (ip: string): number {
+		const entry = this.store.get(ip)
+		if (entry === undefined) { return 0 }
+		const elapsed = this.now() - entry.windowStart
+		return Math.max(0, this.windowMs - elapsed)
+	}
 }
 
 const burstLimiter = new CostRateLimiter(config.costLimiterBurstWindowMs, config.costLimiterBurstBudget)
@@ -57,28 +64,37 @@ export function getSocketIp (socket: Socket): string {
 }
 
 export function computeCost (outputTokens: number, inputTokens: number): number {
-	return outputTokens + Math.ceil(inputTokens / 5)
+	const inputCost = inputTokens * config.inputPricePerMillionTokens / 1_000_000
+	const outputCost = outputTokens * config.outputPricePerMillionTokens / 1_000_000
+	return inputCost + outputCost
 }
 
-export function checkBudgetAvailable (ip: string): boolean {
-	if (!burstLimiter.hasRemainingBudget(ip) || !sustainedLimiter.hasRemainingBudget(ip)) {
+export function checkBudgetAvailable (ip: string): { allowed: boolean; retryAfterMs: number } {
+	const burstExhausted = !burstLimiter.hasRemainingBudget(ip)
+	const sustainedExhausted = !sustainedLimiter.hasRemainingBudget(ip)
+	if (burstExhausted || sustainedExhausted) {
+		const retryMs = Math.max(
+			burstExhausted ? burstLimiter.retryAfterMs(ip) : 0,
+			sustainedExhausted ? sustainedLimiter.retryAfterMs(ip) : 0
+		)
 		logger.warn('Cost rate limit exceeded', {
 			ip,
 			burstRemaining: burstLimiter.remaining(ip),
-			sustainedRemaining: sustainedLimiter.remaining(ip)
+			sustainedRemaining: sustainedLimiter.remaining(ip),
+			retryAfterMs: retryMs
 		})
-		return false
+		return { allowed: false, retryAfterMs: retryMs }
 	}
-	return true
+	return { allowed: true, retryAfterMs: 0 }
 }
 
 export function chargeCost (ip: string, cost: number): void {
 	burstLimiter.charge(ip, cost)
 	sustainedLimiter.charge(ip, cost)
-	logger.debug('Cost charged', {
+	logger.info('Cost charged', {
 		ip,
-		cost,
-		burstRemaining: burstLimiter.remaining(ip),
-		sustainedRemaining: sustainedLimiter.remaining(ip)
+		costDollars: cost.toFixed(6),
+		burstRemainingDollars: burstLimiter.remaining(ip).toFixed(6),
+		sustainedRemainingDollars: sustainedLimiter.remaining(ip).toFixed(6)
 	})
 }

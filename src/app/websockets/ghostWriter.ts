@@ -33,8 +33,9 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		const { requestId } = payload
 		const ip = getSocketIp(socket)
 
-		if (!checkBudgetAvailable(ip)) {
-			io.to(room).emit('predict:error', { requestId, error: 'Rate limit exceeded, please try again later' })
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('predict:error', { requestId, error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
 			return
 		}
 

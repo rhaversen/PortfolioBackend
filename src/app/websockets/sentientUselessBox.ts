@@ -84,8 +84,9 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			return
 		}
 
-		if (!checkBudgetAvailable(ip)) {
-			io.to(room).emit('box:error', { error: 'Rate limit exceeded, please try again later' })
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('box:error', { error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
 			return
 		}
 

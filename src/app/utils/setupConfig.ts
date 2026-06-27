@@ -21,7 +21,9 @@ const AppConfig = {
 	llmMaxTokens: config.get('llm.maxTokens') as number,
 	brainwashMaxTokens: config.get('llm.brainwashMaxTokens') as number,
 	sentientBoxMaxTokens: config.get('llm.sentientBoxMaxTokens') as number,
-	ghostWriterMaxTokens: config.get('llm.ghostWriterMaxTokens') as number
+	ghostWriterMaxTokens: config.get('llm.ghostWriterMaxTokens') as number,
+	inputPricePerMillionTokens: config.get('llm.inputPricePerMillionTokens') as number,
+	outputPricePerMillionTokens: config.get('llm.outputPricePerMillionTokens') as number
 }
 
 export default AppConfig
