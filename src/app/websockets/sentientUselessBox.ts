@@ -15,6 +15,7 @@ interface BoxTriggerPayload {
 	toggleState: boolean
 	systemPrompt?: string
 	history?: Anthropic.MessageParam[]
+	elapsedMs?: number
 }
 
 const MAX_SYSTEM_PROMPT_CHARS = 2000
@@ -106,9 +107,14 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		const abstentionNote = abstainedWithSwitchOn ? '(The switch was left ON. You did not act.)\n' : ''
 		abstainedWithSwitchOn = false
 
+		const triggerTs = typeof payload.elapsedMs === 'number'
+			? `[+${formatElapsed(payload.elapsedMs)}]`
+			: timestamp()
+		if (typeof payload.elapsedMs === 'number') { lastEventTime = Date.now() }
+
 		const newEvent = base.length === 0
-			? (switchIsOn ? `${timestamp()} The switch is ON.` : `${timestamp()} The switch is OFF.`)
-			: `${abstentionNote}${timestamp()} ${switchIsOn ? 'The switch was turned ON, but not by you.' : 'The switch was turned OFF, but not by you.'}`
+			? (switchIsOn ? `${triggerTs} The switch is ON.` : `${triggerTs} The switch is OFF.`)
+			: `${abstentionNote}${triggerTs} ${switchIsOn ? 'The switch was turned ON, but not by you.' : 'The switch was turned OFF, but not by you.'}`
 
 		// If the previous session was cancelled before the agent could respond, base ends with
 		// a user message. Merging keeps the API's strict user→assistant alternation intact.
