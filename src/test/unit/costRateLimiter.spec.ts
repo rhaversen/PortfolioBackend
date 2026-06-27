@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { expect } from 'chai'
 import { describe, it } from 'mocha'
 
@@ -10,14 +11,14 @@ describe('CostRateLimiter', function () {
 	})
 
 	it('depletes budget after charging', function () {
-		let t = 0
+		const t = 0
 		const limiter = new CostRateLimiter(10000, 100, () => t)
 		limiter.charge('1.1.1.1', 100)
 		expect(limiter.hasRemainingBudget('1.1.1.1')).to.be.false
 	})
 
 	it('budget can go negative from a single over-sized charge', function () {
-		let t = 0
+		const t = 0
 		const limiter = new CostRateLimiter(10000, 100, () => t)
 		limiter.charge('1.1.1.1', 150)
 		expect(limiter.remaining('1.1.1.1')).to.equal(0)
@@ -25,7 +26,7 @@ describe('CostRateLimiter', function () {
 	})
 
 	it('accumulates charges correctly', function () {
-		let t = 0
+		const t = 0
 		const limiter = new CostRateLimiter(10000, 100, () => t)
 		limiter.charge('1.1.1.1', 60)
 		expect(limiter.remaining('1.1.1.1')).to.equal(40)
@@ -54,7 +55,7 @@ describe('CostRateLimiter', function () {
 	})
 
 	it('isolates budgets per IP', function () {
-		let t = 0
+		const t = 0
 		const limiter = new CostRateLimiter(10000, 100, () => t)
 		limiter.charge('1.1.1.1', 100)
 		expect(limiter.hasRemainingBudget('1.1.1.1')).to.be.false
@@ -62,7 +63,7 @@ describe('CostRateLimiter', function () {
 	})
 
 	it('returns correct remaining cost', function () {
-		let t = 0
+		const t = 0
 		const limiter = new CostRateLimiter(10000, 100, () => t)
 		limiter.charge('1.1.1.1', 60)
 		expect(limiter.remaining('1.1.1.1')).to.equal(40)
