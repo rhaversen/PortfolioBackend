@@ -75,7 +75,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		const room = socket.id
 
 		if (typeof payload?.toggleState !== 'boolean') {
-			io.to(room).emit('annoyed:error', { error: 'toggleState must be a boolean' })
+			io.to(room).emit('box:error', { error: 'toggleState must be a boolean' })
 			return
 		}
 
@@ -186,7 +186,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				errorBody: isApiError ? err.error : undefined,
 				stack: err instanceof Error ? err.stack : undefined
 			})
-			io.to(room).emit('annoyed:error', { error: 'LLM request failed' })
+			io.to(room).emit('box:error', { error: 'LLM request failed' })
 		} finally {
 			socket.off('disconnect', cancel)
 		}
