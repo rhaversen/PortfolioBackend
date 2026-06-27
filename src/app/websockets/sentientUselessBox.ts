@@ -60,6 +60,10 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		return `[+${formatElapsed(delta)}]`
 	}
 
+	socket.on('box:cancel', () => {
+		cancelCurrent?.()
+	})
+
 	socket.on('box:reset', () => {
 		cancelCurrent?.()
 		trackedMessages = []
