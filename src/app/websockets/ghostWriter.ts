@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
+import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
 
@@ -28,6 +29,12 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		if (typeof payload?.requestId !== 'string') { return }
 
 		const { requestId } = payload
+		const ip = getSocketIp(socket)
+
+		if (!checkBudgetAvailable(ip)) {
+			io.to(room).emit('predict:error', { requestId, error: 'Rate limit exceeded, please try again later' })
+			return
+		}
 
 		if (typeof payload?.text !== 'string' || payload.text.trim() === '') {
 			io.to(room).emit('predict:error', { requestId, error: 'text is required' })
@@ -64,6 +71,8 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
+				const finalMsg = await stream.finalMessage()
+				chargeCost(ip, computeCost(finalMsg.usage.output_tokens, finalMsg.usage.input_tokens))
 				io.to(room).emit('predict:done', { requestId })
 			}
 		} catch (err) {

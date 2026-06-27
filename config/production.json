@@ -1,7 +1,17 @@
 {
-	"apiLimiter": {
-		"windowMs": 60000,
-		"max": 30
+	"costLimiter": {
+		"burstWindowMs": 10000,
+		"burstBudget": 4096,
+		"sustainedWindowMs": 600000,
+		"sustainedBudget": 8192
+	},
+	"burstLimiter": {
+		"windowMs": 10000,
+		"max": 15
+	},
+	"sustainedLimiter": {
+		"windowMs": 600000,
+		"max": 40
 	},
 	"expressPort": 5001,
 	"cors": {

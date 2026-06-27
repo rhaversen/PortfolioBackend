@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
+import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
 
@@ -23,6 +24,12 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 
 	socket.on('brainwash:request', async (payload: BrainwashPayload) => {
 		const room = socket.id
+		const ip = getSocketIp(socket)
+
+		if (!checkBudgetAvailable(ip)) {
+			io.to(room).emit('brainwash:error', { error: 'Rate limit exceeded, please try again later' })
+			return
+		}
 
 		if (typeof payload?.userMessage !== 'string' || payload.userMessage.trim() === '') {
 			io.to(room).emit('brainwash:error', { error: 'userMessage is required' })
@@ -66,6 +73,8 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
+				const finalMsg = await stream.finalMessage()
+				chargeCost(ip, computeCost(finalMsg.usage.output_tokens, finalMsg.usage.input_tokens))
 				io.to(room).emit('brainwash:done')
 			}
 		} catch (err) {

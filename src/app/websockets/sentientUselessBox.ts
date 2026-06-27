@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
+import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
 
@@ -74,9 +75,15 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 	socket.on('box:trigger', async (payload: BoxTriggerPayload) => {
 		const room = socket.id
+		const ip = getSocketIp(socket)
 
 		if (typeof payload?.toggleState !== 'boolean') {
 			io.to(room).emit('box:error', { error: 'toggleState must be a boolean' })
+			return
+		}
+
+		if (!checkBudgetAvailable(ip)) {
+			io.to(room).emit('box:error', { error: 'Rate limit exceeded, please try again later' })
 			return
 		}
 
@@ -136,6 +143,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			while (!cancelled) {
 				const response = await streamTurn(messages)
 				if (!response || cancelled) { return }
+				chargeCost(ip, computeCost(response.usage.output_tokens, response.usage.input_tokens))
 
 				const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
 

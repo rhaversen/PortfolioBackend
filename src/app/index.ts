@@ -32,8 +32,18 @@ app.use(helmet())
 app.use(express.json({ limit: '10kb' }))
 app.use(cors(config.corsConfig))
 
-const apiLimiter = RateLimit(config.apiLimiterConfig)
-app.use(apiLimiter)
+const burstLimiter = RateLimit({
+	...config.burstLimiterConfig,
+	standardHeaders: 'draft-7',
+	legacyHeaders: false
+})
+const sustainedLimiter = RateLimit({
+	...config.sustainedLimiterConfig,
+	standardHeaders: 'draft-7',
+	legacyHeaders: false
+})
+app.use(burstLimiter)
+app.use(sustainedLimiter)
 
 app.use('/api/service', serviceRoutes)
 
