@@ -13,6 +13,7 @@ import serviceRoutes from './routes/service.js'
 import logger from './utils/logger.js'
 import config from './utils/setupConfig.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
+import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
 
 const { NODE_ENV } = process.env as Record<string, string>
@@ -41,6 +42,7 @@ app.use(globalErrorHandler)
 io.on('connection', (socket) => {
 	logger.info(`WebSocket client connected: ${socket.id}`)
 	registerBrainwashHandlers(io, socket)
+	registerGhostWriterHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
 	socket.on('disconnect', () => {
 		logger.info(`WebSocket client disconnected: ${socket.id}`)

@@ -12,6 +12,7 @@
 		"model": "claude-haiku-4-5",
 		"maxTokens": 2048,
 		"brainwashMaxTokens": 512,
-		"sentientBoxMaxTokens": 512
+		"sentientBoxMaxTokens": 512,
+		"ghostWriterMaxTokens": 60
 	}
 }
