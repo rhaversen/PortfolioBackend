@@ -47,7 +47,6 @@ const BOX_TOOLS: Anthropic.Tool[] = [
 
 export function registerSentientUselessBoxHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
-	let trackedMessages: Anthropic.MessageParam[] = []
 	let abstainedWithSwitchOn = false
 	let lastEventTime = Date.now()
 
@@ -71,7 +70,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 	socket.on('box:reset', () => {
 		cancelCurrent?.()
-		trackedMessages = []
 		abstainedWithSwitchOn = false
 		lastEventTime = Date.now()
 	})
@@ -99,10 +97,7 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 		let switchIsOn = payload.toggleState
 
-		// Use server-tracked state when available — it survives cancellations and preserves
-		// events the frontend never received (e.g. an ON that was cancelled before box:done).
-		// Fall back to payload.history on the very first trigger or after a clean session end.
-		const base = trackedMessages.length > 0 ? trackedMessages : (payload.history ?? [])
+		const base = payload.history ?? []
 
 		const abstentionNote = abstainedWithSwitchOn ? '(The switch was left ON. You did not act.)\n' : ''
 		abstainedWithSwitchOn = false
@@ -125,8 +120,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		} else {
 			messages = [...base, { role: 'user', content: newEvent }]
 		}
-
-		trackedMessages = messages
 
 		async function streamTurn (msgs: Anthropic.MessageParam[]): Promise<Anthropic.Message | null> {
 			const stream = client.messages.stream({
@@ -159,7 +152,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				if (!toolBlock) {
 					messages = [...messages, { role: 'assistant', content: response.content }]
 					if (switchIsOn) { abstainedWithSwitchOn = true }
-					trackedMessages = messages
 					io.to(room).emit('box:done', { toolCall: null, history: messages })
 					return
 				}
@@ -167,7 +159,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				const toolName = toolBlock.name as BoxAction
 				io.to(room).emit('box:toolCall', { toolName })
 				messages = [...messages, { role: 'assistant', content: response.content }]
-				trackedMessages = messages
 
 				if (toolName === 'turn_on') {
 					switchIsOn = true
@@ -178,7 +169,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: `${timestamp()} You turn the switch ON. It is ON.` }]
 						}
 					]
-					trackedMessages = messages
 					continue
 				}
 
@@ -192,7 +182,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: result }]
 						}
 					]
-					trackedMessages = messages
 					continue
 				}
 			}
