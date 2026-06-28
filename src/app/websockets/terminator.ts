@@ -65,7 +65,7 @@ export function registerTerminatorHandlers (io: Server, socket: Socket): void {
 		cancelCurrent = cancel
 		socket.once('disconnect', cancel)
 
-		const systemPrompt = payload?.systemPrompt?.slice(0, MAX_SYSTEM_PROMPT_CHARS)
+		const systemPrompt = payload?.systemPrompt?.slice(0, MAX_SYSTEM_PROMPT_CHARS) + '\n\nKeep your responses concise and brief. Never more than a few sentences. Never address the user directly.'
 		const messages: Anthropic.MessageParam[] = [
 			{ role: 'user', content: USER_MESSAGE }
 		]
