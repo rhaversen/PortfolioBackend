@@ -26,6 +26,8 @@
         "openai",
         "prefill",
         "brainwash",
-        "brainwashing"
+        "brainwashing",
+        "underspecified",
+        "giveup"
     ]
 }
