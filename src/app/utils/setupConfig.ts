@@ -18,7 +18,6 @@ const AppConfig = {
 	expressPort: config.get('expressPort') as number,
 	corsConfig: config.get('cors') as CorsOptions,
 	llmModel: config.get('llm.model') as string,
-	llmMaxTokens: config.get('llm.maxTokens') as number,
 	brainwashMaxTokens: config.get('llm.brainwashMaxTokens') as number,
 	sentientBoxMaxTokens: config.get('llm.sentientBoxMaxTokens') as number,
 	ghostWriterMaxTokens: config.get('llm.ghostWriterMaxTokens') as number,
