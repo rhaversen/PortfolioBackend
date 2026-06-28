@@ -12,6 +12,7 @@ import globalErrorHandler from './middleware/globalErrorHandler.js'
 import serviceRoutes from './routes/service.js'
 import logger from './utils/logger.js'
 import config from './utils/setupConfig.js'
+import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
@@ -51,6 +52,7 @@ app.use(globalErrorHandler)
 
 io.on('connection', (socket) => {
 	logger.info(`WebSocket client connected: ${socket.id}`)
+	registerAgentGiveUpHandlers(io, socket)
 	registerBrainwashHandlers(io, socket)
 	registerGhostWriterHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
