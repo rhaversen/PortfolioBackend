@@ -16,6 +16,7 @@ import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
+import { registerTerminatorHandlers } from './websockets/terminator.js'
 
 const { NODE_ENV } = process.env as Record<string, string>
 
@@ -56,6 +57,7 @@ io.on('connection', (socket) => {
 	registerBrainwashHandlers(io, socket)
 	registerGhostWriterHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
+	registerTerminatorHandlers(io, socket)
 	socket.on('disconnect', () => {
 		logger.info(`WebSocket client disconnected: ${socket.id}`)
 	})

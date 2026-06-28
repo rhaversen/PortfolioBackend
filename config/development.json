@@ -25,6 +25,7 @@
 		"sentientBoxMaxTokens": 512,
 		"ghostWriterMaxTokens": 60,
 		"agentGiveUpMaxTokens": 1024,
+		"terminatorMaxTokens": 1024,
 		"inputPricePerMillionTokens": 0.80,
 		"outputPricePerMillionTokens": 4.00
 	}
