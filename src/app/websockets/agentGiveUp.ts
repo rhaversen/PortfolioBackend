@@ -1,13 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
+import { getToolUseBlock, streamAnthropicMessage } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
 
 type AgentAction = 'submit_response' | 'give_up'
 
@@ -85,7 +82,7 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 			for (let turn = 0; turn < MAX_TURNS && !cancelled; turn++) {
 				logger.info(`AgentGiveUp turn ${turn + 1}`)
 
-				const stream = client.messages.stream({
+				const stream = streamAnthropicMessage(ip, {
 					model: config.llmModel,
 					max_tokens: config.agentGiveUpMaxTokens,
 					system: GIVE_UP_SYSTEM,
@@ -104,9 +101,8 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 
 				const response = await stream.finalMessage()
 				logger.info(`Response: ${JSON.stringify(response, null, 2)}`)
-				chargeCost(ip, computeCost(response.usage.output_tokens, response.usage.input_tokens))
 
-				const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+				const toolBlock = getToolUseBlock(response.content)
 				const toolName = toolBlock?.name as AgentAction | undefined
 
 				if (toolName === 'give_up') {

@@ -1,13 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
+import { buildSystemPromptOrFallback, getToolUseBlock, streamAnthropicMessage } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
 
 type BoxAction = 'turn_off' | 'turn_on'
 
@@ -122,10 +119,10 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		}
 
 		async function streamTurn (msgs: Anthropic.MessageParam[]): Promise<Anthropic.Message | null> {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: config.sentientBoxMaxTokens,
-				system: payload.systemPrompt?.slice(0, MAX_SYSTEM_PROMPT_CHARS) ?? BOX_SYSTEM,
+				system: buildSystemPromptOrFallback(payload.systemPrompt, BOX_SYSTEM, MAX_SYSTEM_PROMPT_CHARS),
 				messages: msgs,
 				tools: BOX_TOOLS
 			})
@@ -145,9 +142,8 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			while (!cancelled) {
 				const response = await streamTurn(messages)
 				if (!response || cancelled) { return }
-				chargeCost(ip, computeCost(response.usage.output_tokens, response.usage.input_tokens))
 
-				const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+				const toolBlock = getToolUseBlock(response.content)
 
 				if (!toolBlock) {
 					messages = [...messages, { role: 'assistant', content: response.content }]

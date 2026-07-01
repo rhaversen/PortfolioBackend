@@ -1,13 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
+import { streamAnthropicMessage, truncateText } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
 
 interface BrainwashPayload {
 	systemPrompt?: string
@@ -53,20 +50,20 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: payload.userMessage.slice(0, MAX_USER_MESSAGE_CHARS) }
+			{ role: 'user', content: truncateText(payload.userMessage, MAX_USER_MESSAGE_CHARS) }
 		]
 
-		const prefill = payload.assistantPrefill.slice(0, MAX_ASSISTANT_PREFILL_CHARS)
+		const prefill = truncateText(payload.assistantPrefill, MAX_ASSISTANT_PREFILL_CHARS)
 		if (prefill !== '') {
 			messages.push({ role: 'assistant', content: prefill })
 		}
 
 		try {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: config.brainwashMaxTokens,
 				...(typeof payload.systemPrompt === 'string' && payload.systemPrompt !== '' && {
-					system: payload.systemPrompt.slice(0, MAX_SYSTEM_PROMPT_CHARS)
+					system: truncateText(payload.systemPrompt, MAX_SYSTEM_PROMPT_CHARS)
 				}),
 				messages
 			})
@@ -79,8 +76,7 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
-				const finalMsg = await stream.finalMessage()
-				chargeCost(ip, computeCost(finalMsg.usage.output_tokens, finalMsg.usage.input_tokens))
+				await stream.finalMessage()
 				io.to(room).emit('brainwash:done')
 			}
 		} catch (err) {

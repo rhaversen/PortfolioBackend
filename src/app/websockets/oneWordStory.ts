@@ -1,13 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
+import { createAnthropicMessage, getTextContent, truncateText } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
 
 interface OneWordPayload {
 	systemPrompt?: string
@@ -61,7 +58,7 @@ export function registerOneWordStoryHandlers (io: Server, socket: Socket): void 
 		cancelCurrent = cancel
 		socket.once('disconnect', cancel)
 
-		const storySoFar = payload.story.trim().slice(0, MAX_STORY_CHARS)
+		const storySoFar = truncateText(payload.story.trim(), MAX_STORY_CHARS)
 
 		// The prefill must always look grammatically unfinished, or the model may end its turn
 		// with zero output tokens because the bare story already reads as a complete sentence.
@@ -76,20 +73,18 @@ export function registerOneWordStoryHandlers (io: Server, socket: Socket): void 
 			let word = ''
 
 			for (let attempt = 0; attempt < MAX_ATTEMPTS && !cancelled; attempt++) {
-				const response = await client.messages.create({
+				const response = await createAnthropicMessage(ip, {
 					model: config.llmModel,
 					max_tokens: config.oneWordMaxTokens,
 					...(typeof payload.systemPrompt === 'string' && payload.systemPrompt !== '' && {
-						system: payload.systemPrompt.slice(0, MAX_SYSTEM_PROMPT_CHARS)
+						system: truncateText(payload.systemPrompt, MAX_SYSTEM_PROMPT_CHARS)
 					}),
 					messages
 				})
 
 				if (cancelled) { return }
 
-				chargeCost(ip, computeCost(response.usage.output_tokens, response.usage.input_tokens))
-
-				const text = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text ?? ''
+				const text = getTextContent(response.content)
 				const candidate = extractWord(text)
 
 				if (isValidWord(candidate)) {

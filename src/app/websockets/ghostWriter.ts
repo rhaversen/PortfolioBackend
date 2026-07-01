@@ -1,13 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import { checkBudgetAvailable, chargeCost, computeCost, getSocketIp } from '../utils/costRateLimiter.js'
+import { clampMaxTokens, streamAnthropicMessage, truncateTail } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
 
 interface PredictPayload {
 	text: string
@@ -50,12 +47,12 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const requestedTokens = typeof payload.maxTokens === 'number' ? payload.maxTokens : 24
-		const maxTokens = Math.min(Math.max(requestedTokens, 1), config.ghostWriterMaxTokens)
+		const maxTokens = clampMaxTokens(requestedTokens, config.ghostWriterMaxTokens, 24)
 
-		const trimmed = payload.text.trimEnd().slice(-MAX_COMPLETION_TEXT_CHARS)
+		const trimmed = truncateTail(payload.text.trimEnd(), MAX_COMPLETION_TEXT_CHARS)
 
 		try {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: maxTokens,
 				stop_sequences: ['.', '!', '?'],
@@ -74,8 +71,7 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
-				const finalMsg = await stream.finalMessage()
-				chargeCost(ip, computeCost(finalMsg.usage.output_tokens, finalMsg.usage.input_tokens))
+				await stream.finalMessage()
 				io.to(room).emit('predict:done', { requestId })
 			}
 		} catch (err) {
