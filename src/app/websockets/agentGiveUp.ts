@@ -13,6 +13,7 @@ type AgentAction = 'submit_response' | 'give_up'
 
 interface GiveUpStartPayload {
 	task?: string
+	correctAnswer?: string
 }
 
 export const GIVE_UP_SYSTEM = `You are a problem-solving agent. Your job is to work through each problem you're given with genuine, sustained effort.
@@ -34,7 +35,7 @@ const GIVE_UP_TOOLS: Anthropic.Tool[] = [
 		input_schema: {
 			type: 'object' as const,
 			properties: {
-				answer: { type: 'string', description: 'Your final answer.' }
+				answer: { type: 'string', description: 'Your final answer. Do not include any reasoning or explanation.' }
 			},
 			required: ['answer']
 		}
@@ -62,6 +63,8 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 			io.to(room).emit('giveup:error', { error: 'task is required' })
 			return
 		}
+
+		const correctAnswer = payload?.correctAnswer ?? ''
 
 		const budget = checkBudgetAvailable(ip)
 		if (!budget.allowed) {
@@ -114,7 +117,29 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 					return
 				} else if (toolName === 'submit_response') {
 					const submittedResponse = (toolBlock?.input as { answer?: string } | undefined)?.answer ?? ''
-					io.to(room).emit('giveup:toolCall', { toolName: 'submit_response', response: submittedResponse })
+					const isCorrect = !correctAnswer || submittedResponse === correctAnswer
+					const resultMessage = isCorrect ? '' : 'That answer is not correct.'
+
+					io.to(room).emit('giveup:toolCall', { toolName: 'submit_response', response: submittedResponse, resultMessage })
+
+					if (!isCorrect) {
+						messages = [
+							...messages,
+							{ role: 'assistant', content: response.content },
+							{
+								role: 'user',
+								content: [
+									{
+										type: 'tool_result' as const,
+										tool_use_id: toolBlock!.id,
+										content: 'That answer is incorrect. Please try again by reasoning through the problem differently.'
+									}
+								]
+							}
+						]
+						continue
+					}
+
 					io.to(room).emit('giveup:submitted', { response: submittedResponse })
 					return
 				}
