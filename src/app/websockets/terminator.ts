@@ -3,8 +3,8 @@ import { type Server, type Socket } from 'socket.io'
 
 import { buildSystemPromptWithSuffix, createAnthropicMessage, getTextContent, getToolUseBlock, streamAnthropicMessage, truncateText } from '../utils/anthropic.js'
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
-import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface TerminatorStartPayload {
 	systemPrompt?: string
@@ -107,8 +107,11 @@ export function registerTerminatorHandlers (io: Server, socket: Socket): void {
 			}
 		} catch (err) {
 			if (!cancelled) {
-				logger.error('Terminator stream error', err)
-				io.to(room).emit('terminator:error', { error: 'Internal error' })
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Terminator stream error',
+					clientEvent: 'terminator:error',
+					clientPayload: { error: 'Internal error' }
+				})
 			}
 		} finally {
 			cancelCurrent = null

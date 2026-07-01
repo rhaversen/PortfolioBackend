@@ -5,6 +5,7 @@ import { getToolUseBlock, streamAnthropicMessage } from '../utils/anthropic.js'
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 type AgentAction = 'submit_response' | 'give_up'
 
@@ -146,8 +147,11 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 			}
 		} catch (err) {
 			if (!cancelled) {
-				logger.error('AgentGiveUp stream error', err)
-				io.to(room).emit('giveup:error', { error: 'Internal error' })
+				handleWebSocketError(io, room, err, {
+					logMessage: 'AgentGiveUp stream error',
+					clientEvent: 'giveup:error',
+					clientPayload: { error: 'Internal error' }
+				})
 			}
 		} finally {
 			cancelCurrent = null

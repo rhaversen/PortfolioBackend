@@ -3,8 +3,8 @@ import { type Server, type Socket } from 'socket.io'
 
 import { buildSystemPromptOrFallback, getToolUseBlock, streamAnthropicMessage } from '../utils/anthropic.js'
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
-import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 type BoxAction = 'turn_off' | 'turn_on'
 
@@ -182,14 +182,13 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				}
 			}
 		} catch (err) {
-			const isApiError = err instanceof Anthropic.APIError
-			logger.error('Annoyed WebSocket error', {
-				message: err instanceof Error ? err.message : String(err),
-				status: isApiError ? err.status : undefined,
-				errorBody: isApiError ? err.error : undefined,
-				stack: err instanceof Error ? err.stack : undefined
-			})
-			io.to(room).emit('box:error', { error: 'LLM request failed' })
+			if (!cancelled) {
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Annoyed WebSocket error',
+					clientEvent: 'box:error',
+					clientPayload: { error: 'LLM request failed' }
+				})
+			}
 		} finally {
 			socket.off('disconnect', cancel)
 		}

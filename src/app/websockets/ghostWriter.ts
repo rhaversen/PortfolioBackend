@@ -1,10 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
 import { clampMaxTokens, streamAnthropicMessage, truncateTail } from '../utils/anthropic.js'
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
-import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface PredictPayload {
 	text: string
@@ -75,15 +74,12 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 				io.to(room).emit('predict:done', { requestId })
 			}
 		} catch (err) {
-			const isApiError = err instanceof Anthropic.APIError
-			logger.error('Ghost writer WebSocket error', {
-				message: err instanceof Error ? err.message : String(err),
-				status: isApiError ? err.status : undefined,
-				errorBody: isApiError ? err.error : undefined,
-				stack: err instanceof Error ? err.stack : undefined
-			})
 			if (!cancelled) {
-				io.to(room).emit('predict:error', { requestId, error: 'LLM request failed' })
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Ghost writer WebSocket error',
+					clientEvent: 'predict:error',
+					clientPayload: { requestId, error: 'LLM request failed' }
+				})
 			}
 		} finally {
 			socket.off('disconnect', cancel)

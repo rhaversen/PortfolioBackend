@@ -3,8 +3,8 @@ import { type Server, type Socket } from 'socket.io'
 
 import { streamAnthropicMessage, truncateText } from '../utils/anthropic.js'
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
-import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface BrainwashPayload {
 	systemPrompt?: string
@@ -80,8 +80,13 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 				io.to(room).emit('brainwash:done')
 			}
 		} catch (err) {
-			logger.error('Brainwash WebSocket error', { err })
-			io.to(room).emit('brainwash:error', { error: 'LLM request failed' })
+			if (!cancelled) {
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Brainwash WebSocket error',
+					clientEvent: 'brainwash:error',
+					clientPayload: { error: 'LLM request failed' }
+				})
+			}
 		} finally {
 			socket.off('disconnect', cancel)
 		}

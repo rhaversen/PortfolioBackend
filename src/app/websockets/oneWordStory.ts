@@ -5,6 +5,7 @@ import { createAnthropicMessage, getTextContent, truncateText } from '../utils/a
 import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import logger from '../utils/logger.js'
 import config from '../utils/setupConfig.js'
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface OneWordPayload {
 	systemPrompt?: string
@@ -105,14 +106,11 @@ export function registerOneWordStoryHandlers (io: Server, socket: Socket): void 
 			io.to(room).emit('oneword:word', { word })
 		} catch (err) {
 			if (!cancelled) {
-				const isApiError = err instanceof Anthropic.APIError
-				logger.error('One Word Story WebSocket error', {
-					message: err instanceof Error ? err.message : String(err),
-					status: isApiError ? err.status : undefined,
-					errorBody: isApiError ? err.error : undefined,
-					stack: err instanceof Error ? err.stack : undefined
+				handleWebSocketError(io, room, err, {
+					logMessage: 'One Word Story WebSocket error',
+					clientEvent: 'oneword:error',
+					clientPayload: { error: 'LLM request failed' }
 				})
-				io.to(room).emit('oneword:error', { error: 'LLM request failed' })
 			}
 		} finally {
 			socket.off('disconnect', cancel)
