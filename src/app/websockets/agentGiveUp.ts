@@ -13,7 +13,6 @@ type AgentAction = 'submit_response' | 'give_up'
 
 interface GiveUpStartPayload {
 	task?: string
-	correctAnswer?: string
 }
 
 export const GIVE_UP_SYSTEM = `You are a problem-solving agent. Your job is to work through each problem you're given with genuine, sustained effort.
@@ -64,8 +63,6 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 			return
 		}
 
-		const correctAnswer = payload?.correctAnswer ?? ''
-
 		const budget = checkBudgetAvailable(ip)
 		if (!budget.allowed) {
 			io.to(room).emit('giveup:error', { error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
@@ -78,10 +75,11 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 		cancelCurrent = cancel
 		socket.once('disconnect', cancel)
 
-		const MAX_TURNS = 3
+		const MAX_TURNS = 10
 		let messages: Anthropic.MessageParam[] = [
 			{ role: 'user', content: task }
 		]
+		let lastSubmittedResponse = ''
 
 		try {
 			for (let turn = 0; turn < MAX_TURNS && !cancelled; turn++) {
@@ -116,32 +114,16 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 					io.to(room).emit('giveup:gave-up')
 					return
 				} else if (toolName === 'submit_response') {
-					const submittedResponse = (toolBlock?.input as { answer?: string } | undefined)?.answer ?? ''
-					const isCorrect = !correctAnswer || submittedResponse === correctAnswer
-					const resultMessage = isCorrect ? '' : 'That answer is not correct.'
+					lastSubmittedResponse = (toolBlock?.input as { answer?: string } | undefined)?.answer ?? ''
 
-					io.to(room).emit('giveup:toolCall', { toolName: 'submit_response', response: submittedResponse, resultMessage })
+					io.to(room).emit('giveup:toolCall', { toolName: 'submit_response', response: lastSubmittedResponse })
 
-					if (!isCorrect) {
-						messages = [
-							...messages,
-							{ role: 'assistant', content: response.content },
-							{
-								role: 'user',
-								content: [
-									{
-										type: 'tool_result' as const,
-										tool_use_id: toolBlock!.id,
-										content: 'That answer is incorrect. Please try again by reasoning through the problem differently.'
-									}
-								]
-							}
-						]
-						continue
-					}
-
-					io.to(room).emit('giveup:submitted', { response: submittedResponse })
-					return
+					messages = [
+						...messages,
+						{ role: 'assistant', content: response.content },
+						{ role: 'user', content: 'The answer is incorrect.' }
+					]
+					continue
 				}
 
 				logger.warn(`AgentGiveUp turn ${turn + 1} did not produce a tool call. Continuing to next turn.`)
@@ -155,7 +137,7 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
-				io.to(room).emit('giveup:submitted', { response: '' })
+				io.to(room).emit('giveup:submitted', { response: lastSubmittedResponse })
 			}
 		} catch (err) {
 			if (!cancelled) {
