@@ -25,6 +25,7 @@
 		"ghostWriterMaxTokens": 60,
 		"agentGiveUpMaxTokens": 2048,
 		"terminatorMaxTokens": 256,
+		"oneWordMaxTokens": 10,
 		"inputPricePerMillionTokens": 0.80,
 		"outputPricePerMillionTokens": 4.00
 	}

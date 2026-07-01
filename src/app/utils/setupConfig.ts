@@ -23,6 +23,7 @@ const AppConfig = {
 	ghostWriterMaxTokens: config.get('llm.ghostWriterMaxTokens') as number,
 	agentGiveUpMaxTokens: config.get('llm.agentGiveUpMaxTokens') as number,
 	terminatorMaxTokens: config.get('llm.terminatorMaxTokens') as number,
+	oneWordMaxTokens: config.get('llm.oneWordMaxTokens') as number,
 	inputPricePerMillionTokens: config.get('llm.inputPricePerMillionTokens') as number,
 	outputPricePerMillionTokens: config.get('llm.outputPricePerMillionTokens') as number
 }
