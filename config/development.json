@@ -23,7 +23,7 @@
 		"brainwashMaxTokens": 512,
 		"sentientBoxMaxTokens": 512,
 		"ghostWriterMaxTokens": 60,
-		"agentGiveUpMaxTokens": 1024,
+		"agentGiveUpMaxTokens": 2048,
 		"terminatorMaxTokens": 256,
 		"inputPricePerMillionTokens": 0.80,
 		"outputPricePerMillionTokens": 4.00
