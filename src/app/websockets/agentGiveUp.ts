@@ -113,15 +113,24 @@ export function registerAgentGiveUpHandlers (io: Server, socket: Socket): void {
 					io.to(room).emit('giveup:toolCall', { toolName: 'give_up' })
 					io.to(room).emit('giveup:gave-up')
 					return
-				} else if (toolName === 'submit_response') {
-					lastSubmittedResponse = (toolBlock?.input as { answer?: string } | undefined)?.answer ?? ''
+				} else if (toolName === 'submit_response' && toolBlock != null) {
+					lastSubmittedResponse = (toolBlock.input as { answer?: string } | undefined)?.answer ?? ''
 
 					io.to(room).emit('giveup:toolCall', { toolName: 'submit_response', response: lastSubmittedResponse })
 
 					messages = [
 						...messages,
 						{ role: 'assistant', content: response.content },
-						{ role: 'user', content: 'The answer is incorrect.' }
+						{
+							role: 'user',
+							content: [
+								{
+									type: 'tool_result',
+									tool_use_id: toolBlock.id,
+									content: 'The answer is incorrect.'
+								}
+							]
+						}
 					]
 					continue
 				}
