@@ -1,12 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import logger from '../utils/logger.js'
+import { streamAnthropicMessage, truncateText } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface BrainwashPayload {
 	systemPrompt?: string
@@ -14,11 +12,26 @@ interface BrainwashPayload {
 	assistantPrefill: string
 }
 
+const MAX_SYSTEM_PROMPT_CHARS = 2000
+const MAX_USER_MESSAGE_CHARS = 2000
+const MAX_ASSISTANT_PREFILL_CHARS = 500
+
 export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
 
+	socket.on('brainwash:cancel', () => {
+		cancelCurrent?.()
+	})
+
 	socket.on('brainwash:request', async (payload: BrainwashPayload) => {
 		const room = socket.id
+		const ip = getSocketIp(socket)
+
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('brainwash:error', { error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
+			return
+		}
 
 		if (typeof payload?.userMessage !== 'string' || payload.userMessage.trim() === '') {
 			io.to(room).emit('brainwash:error', { error: 'userMessage is required' })
@@ -37,19 +50,20 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const messages: Anthropic.MessageParam[] = [
-			{ role: 'user', content: payload.userMessage }
+			{ role: 'user', content: truncateText(payload.userMessage, MAX_USER_MESSAGE_CHARS) }
 		]
 
-		if (payload.assistantPrefill !== '') {
-			messages.push({ role: 'assistant', content: payload.assistantPrefill })
+		const prefill = truncateText(payload.assistantPrefill, MAX_ASSISTANT_PREFILL_CHARS)
+		if (prefill !== '') {
+			messages.push({ role: 'assistant', content: prefill })
 		}
 
 		try {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: config.brainwashMaxTokens,
 				...(typeof payload.systemPrompt === 'string' && payload.systemPrompt !== '' && {
-					system: payload.systemPrompt
+					system: truncateText(payload.systemPrompt, MAX_SYSTEM_PROMPT_CHARS)
 				}),
 				messages
 			})
@@ -62,11 +76,17 @@ export function registerBrainwashHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
+				await stream.finalMessage()
 				io.to(room).emit('brainwash:done')
 			}
 		} catch (err) {
-			logger.error('Brainwash WebSocket error', { err })
-			io.to(room).emit('brainwash:error', { error: 'LLM request failed' })
+			if (!cancelled) {
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Brainwash WebSocket error',
+					clientEvent: 'brainwash:error',
+					clientPayload: { error: 'LLM request failed' }
+				})
+			}
 		} finally {
 			socket.off('disconnect', cancel)
 		}

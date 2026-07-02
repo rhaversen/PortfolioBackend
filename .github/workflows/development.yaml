@@ -9,6 +9,6 @@ jobs:
         uses: rhaversen/.github/.github/workflows/development-backend.yml@main
         with:
             node_version: "24"
-            run_unit_tests: false
+            run_unit_tests: true
             run_integration_tests: false
             run_development_tests: true
