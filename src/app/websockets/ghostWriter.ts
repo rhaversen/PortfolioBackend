@@ -1,18 +1,17 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import logger from '../utils/logger.js'
+import { clampMaxTokens, streamAnthropicMessage, truncateTail } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 interface PredictPayload {
 	text: string
 	requestId: string
 	maxTokens?: number
 }
+
+const MAX_COMPLETION_TEXT_CHARS = 3000
 
 export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 	const active = new Map<string, () => void>() // requestId → cancel
@@ -28,6 +27,13 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		if (typeof payload?.requestId !== 'string') { return }
 
 		const { requestId } = payload
+		const ip = getSocketIp(socket)
+
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('predict:error', { requestId, error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
+			return
+		}
 
 		if (typeof payload?.text !== 'string' || payload.text.trim() === '') {
 			io.to(room).emit('predict:error', { requestId, error: 'text is required' })
@@ -40,12 +46,12 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 		socket.once('disconnect', cancel)
 
 		const requestedTokens = typeof payload.maxTokens === 'number' ? payload.maxTokens : 24
-		const maxTokens = Math.min(Math.max(requestedTokens, 1), config.ghostWriterMaxTokens)
+		const maxTokens = clampMaxTokens(requestedTokens, config.ghostWriterMaxTokens, 24)
 
-		const trimmed = payload.text.trimEnd()
+		const trimmed = truncateTail(payload.text.trimEnd(), MAX_COMPLETION_TEXT_CHARS)
 
 		try {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: maxTokens,
 				stop_sequences: ['.', '!', '?'],
@@ -64,18 +70,16 @@ export function registerGhostWriterHandlers (io: Server, socket: Socket): void {
 			}
 
 			if (!cancelled) {
+				await stream.finalMessage()
 				io.to(room).emit('predict:done', { requestId })
 			}
 		} catch (err) {
-			const isApiError = err instanceof Anthropic.APIError
-			logger.error('Ghost writer WebSocket error', {
-				message: err instanceof Error ? err.message : String(err),
-				status: isApiError ? err.status : undefined,
-				errorBody: isApiError ? err.error : undefined,
-				stack: err instanceof Error ? err.stack : undefined
-			})
 			if (!cancelled) {
-				io.to(room).emit('predict:error', { requestId, error: 'LLM request failed' })
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Ghost writer WebSocket error',
+					clientEvent: 'predict:error',
+					clientPayload: { requestId, error: 'LLM request failed' }
+				})
 			}
 		} finally {
 			socket.off('disconnect', cancel)

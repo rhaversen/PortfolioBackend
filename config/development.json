@@ -1,6 +1,16 @@
 {
-	"apiLimiter": {
-		"windowMs": 60000,
+	"costLimiter": {
+		"burstWindowMs": 3600000,
+		"burstBudget": 0.10,
+		"sustainedWindowMs": 86400000,
+		"sustainedBudget": 0.50
+	},
+	"burstLimiter": {
+		"windowMs": 10000,
+		"max": 500
+	},
+	"sustainedLimiter": {
+		"windowMs": 600000,
 		"max": 1000
 	},
 	"expressPort": 5001,
@@ -10,9 +20,13 @@
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",
-		"maxTokens": 2048,
 		"brainwashMaxTokens": 512,
 		"sentientBoxMaxTokens": 512,
-		"ghostWriterMaxTokens": 60
+		"ghostWriterMaxTokens": 60,
+		"agentGiveUpMaxTokens": 2048,
+		"terminatorMaxTokens": 256,
+		"oneWordMaxTokens": 10,
+		"inputPricePerMillionTokens": 0.80,
+		"outputPricePerMillionTokens": 4.00
 	}
 }

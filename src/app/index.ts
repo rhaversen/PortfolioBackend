@@ -12,9 +12,12 @@ import globalErrorHandler from './middleware/globalErrorHandler.js'
 import serviceRoutes from './routes/service.js'
 import logger from './utils/logger.js'
 import config from './utils/setupConfig.js'
+import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
+import { registerOneWordStoryHandlers } from './websockets/oneWordStory.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
+import { registerTerminatorHandlers } from './websockets/terminator.js'
 
 const { NODE_ENV } = process.env as Record<string, string>
 
@@ -32,8 +35,18 @@ app.use(helmet())
 app.use(express.json({ limit: '10kb' }))
 app.use(cors(config.corsConfig))
 
-const apiLimiter = RateLimit(config.apiLimiterConfig)
-app.use(apiLimiter)
+const burstLimiter = RateLimit({
+	...config.burstLimiterConfig,
+	standardHeaders: 'draft-7',
+	legacyHeaders: false
+})
+const sustainedLimiter = RateLimit({
+	...config.sustainedLimiterConfig,
+	standardHeaders: 'draft-7',
+	legacyHeaders: false
+})
+app.use(burstLimiter)
+app.use(sustainedLimiter)
 
 app.use('/api/service', serviceRoutes)
 
@@ -41,9 +54,12 @@ app.use(globalErrorHandler)
 
 io.on('connection', (socket) => {
 	logger.info(`WebSocket client connected: ${socket.id}`)
+	registerAgentGiveUpHandlers(io, socket)
 	registerBrainwashHandlers(io, socket)
 	registerGhostWriterHandlers(io, socket)
+	registerOneWordStoryHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
+	registerTerminatorHandlers(io, socket)
 	socket.on('disconnect', () => {
 		logger.info(`WebSocket client disconnected: ${socket.id}`)
 	})

@@ -1,19 +1,21 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type Server, type Socket } from 'socket.io'
 
-import logger from '../utils/logger.js'
+import { buildSystemPromptOrFallback, getToolUseBlock, streamAnthropicMessage } from '../utils/anthropic.js'
+import { checkBudgetAvailable, getSocketIp } from '../utils/costRateLimiter.js'
 import config from '../utils/setupConfig.js'
-
-const client = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY
-})
+import { handleWebSocketError } from '../utils/websocketError.js'
 
 type BoxAction = 'turn_off' | 'turn_on'
 
 interface BoxTriggerPayload {
 	toggleState: boolean
+	systemPrompt?: string
 	history?: Anthropic.MessageParam[]
+	elapsedMs?: number
 }
+
+const MAX_SYSTEM_PROMPT_CHARS = 2000
 
 export const BOX_SYSTEM = `You are alone with a switch.
 
@@ -42,7 +44,6 @@ const BOX_TOOLS: Anthropic.Tool[] = [
 
 export function registerSentientUselessBoxHandlers (io: Server, socket: Socket): void {
 	let cancelCurrent: (() => void) | null = null
-	let trackedMessages: Anthropic.MessageParam[] = []
 	let abstainedWithSwitchOn = false
 	let lastEventTime = Date.now()
 
@@ -60,18 +61,28 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 		return `[+${formatElapsed(delta)}]`
 	}
 
+	socket.on('box:cancel', () => {
+		cancelCurrent?.()
+	})
+
 	socket.on('box:reset', () => {
 		cancelCurrent?.()
-		trackedMessages = []
 		abstainedWithSwitchOn = false
 		lastEventTime = Date.now()
 	})
 
 	socket.on('box:trigger', async (payload: BoxTriggerPayload) => {
 		const room = socket.id
+		const ip = getSocketIp(socket)
 
 		if (typeof payload?.toggleState !== 'boolean') {
-			io.to(room).emit('annoyed:error', { error: 'toggleState must be a boolean' })
+			io.to(room).emit('box:error', { error: 'toggleState must be a boolean' })
+			return
+		}
+
+		const budget = checkBudgetAvailable(ip)
+		if (!budget.allowed) {
+			io.to(room).emit('box:error', { error: 'Rate limit exceeded, please try again later', retryAfterMs: budget.retryAfterMs })
 			return
 		}
 
@@ -83,17 +94,19 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 
 		let switchIsOn = payload.toggleState
 
-		// Use server-tracked state when available — it survives cancellations and preserves
-		// events the frontend never received (e.g. an ON that was cancelled before box:done).
-		// Fall back to payload.history on the very first trigger or after a clean session end.
-		const base = trackedMessages.length > 0 ? trackedMessages : (payload.history ?? [])
+		const base = payload.history ?? []
 
 		const abstentionNote = abstainedWithSwitchOn ? '(The switch was left ON. You did not act.)\n' : ''
 		abstainedWithSwitchOn = false
 
+		const triggerTs = typeof payload.elapsedMs === 'number'
+			? `[+${formatElapsed(payload.elapsedMs)}]`
+			: timestamp()
+		if (typeof payload.elapsedMs === 'number') { lastEventTime = Date.now() }
+
 		const newEvent = base.length === 0
-			? (switchIsOn ? `${timestamp()} The switch is ON.` : `${timestamp()} The switch is OFF.`)
-			: `${abstentionNote}${timestamp()} ${switchIsOn ? 'The switch was turned ON, but not by you.' : 'The switch was turned OFF, but not by you.'}`
+			? (switchIsOn ? `${triggerTs} The switch is ON.` : `${triggerTs} The switch is OFF.`)
+			: `${abstentionNote}${triggerTs} ${switchIsOn ? 'The switch was turned ON, but not by you.' : 'The switch was turned OFF, but not by you.'}`
 
 		// If the previous session was cancelled before the agent could respond, base ends with
 		// a user message. Merging keeps the API's strict user→assistant alternation intact.
@@ -105,13 +118,11 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 			messages = [...base, { role: 'user', content: newEvent }]
 		}
 
-		trackedMessages = messages
-
 		async function streamTurn (msgs: Anthropic.MessageParam[]): Promise<Anthropic.Message | null> {
-			const stream = client.messages.stream({
+			const stream = streamAnthropicMessage(ip, {
 				model: config.llmModel,
 				max_tokens: config.sentientBoxMaxTokens,
-				system: BOX_SYSTEM,
+				system: buildSystemPromptOrFallback(payload.systemPrompt, BOX_SYSTEM, MAX_SYSTEM_PROMPT_CHARS),
 				messages: msgs,
 				tools: BOX_TOOLS
 			})
@@ -132,12 +143,11 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				const response = await streamTurn(messages)
 				if (!response || cancelled) { return }
 
-				const toolBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+				const toolBlock = getToolUseBlock(response.content)
 
 				if (!toolBlock) {
 					messages = [...messages, { role: 'assistant', content: response.content }]
 					if (switchIsOn) { abstainedWithSwitchOn = true }
-					trackedMessages = messages
 					io.to(room).emit('box:done', { toolCall: null, history: messages })
 					return
 				}
@@ -145,7 +155,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 				const toolName = toolBlock.name as BoxAction
 				io.to(room).emit('box:toolCall', { toolName })
 				messages = [...messages, { role: 'assistant', content: response.content }]
-				trackedMessages = messages
 
 				if (toolName === 'turn_on') {
 					switchIsOn = true
@@ -156,7 +165,6 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: `${timestamp()} You turn the switch ON. It is ON.` }]
 						}
 					]
-					trackedMessages = messages
 					continue
 				}
 
@@ -170,19 +178,17 @@ export function registerSentientUselessBoxHandlers (io: Server, socket: Socket):
 							content: [{ type: 'tool_result' as const, tool_use_id: toolBlock.id, content: result }]
 						}
 					]
-					trackedMessages = messages
 					continue
 				}
 			}
 		} catch (err) {
-			const isApiError = err instanceof Anthropic.APIError
-			logger.error('Annoyed WebSocket error', {
-				message: err instanceof Error ? err.message : String(err),
-				status: isApiError ? err.status : undefined,
-				errorBody: isApiError ? err.error : undefined,
-				stack: err instanceof Error ? err.stack : undefined
-			})
-			io.to(room).emit('annoyed:error', { error: 'LLM request failed' })
+			if (!cancelled) {
+				handleWebSocketError(io, room, err, {
+					logMessage: 'Annoyed WebSocket error',
+					clientEvent: 'box:error',
+					clientPayload: { error: 'LLM request failed' }
+				})
+			}
 		} finally {
 			socket.off('disconnect', cancel)
 		}
