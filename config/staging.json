@@ -15,8 +15,38 @@
 	},
 	"expressPort": 5001,
 	"cors": {
-		"origin": "https://rhaversen.dk",
+		"origin": "https://staging.rhaversen.dk",
 		"credentials": true
+	},
+	"mongoose": {
+		"retrySettings": {
+			"maxAttempts": 5,
+			"interval": 5000
+		},
+		"options": {
+			"retryWrites": "true",
+			"w": "majority",
+			"appName": "staging"
+		}
+	},
+	"bcrypt": {
+		"saltRounds": 10
+	},
+	"cookieOptions": {
+		"httpOnly": true,
+		"secure": true,
+		"sameSite": "strict"
+	},
+	"session": {
+		"expiry": 5184000000
+	},
+	"user": {
+		"verificationExpiry": 86400000,
+		"passwordResetExpiry": 86400000
+	},
+	"email": {
+		"from": "Portfolio <no-reply@rhave.dk>",
+		"frontendBaseUrl": "https://staging.rhaversen.dk"
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",
