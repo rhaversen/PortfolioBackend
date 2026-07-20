@@ -47,7 +47,8 @@
 	},
 	"email": {
 		"from": "Portfolio <no-reply@rhaversen.com>",
-		"frontendBaseUrl": "https://staging.rhaversen.com"
+		"frontendBaseUrl": "https://staging.rhaversen.com",
+		"port": 587
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",
