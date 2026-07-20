@@ -33,6 +33,7 @@ const AppConfig = {
 	deletionExpiry: config.get('user.deletionExpiry') as number,
 	emailFrom: config.get('email.from') as string,
 	emailFrontendBaseUrl: config.get('email.frontendBaseUrl') as string,
+	emailPort: config.get('email.port') as number,
 	llmModel: config.get('llm.model') as string,
 	brainwashMaxTokens: config.get('llm.brainwashMaxTokens') as number,
 	sentientBoxMaxTokens: config.get('llm.sentientBoxMaxTokens') as number,

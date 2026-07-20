@@ -47,7 +47,8 @@
 	},
 	"email": {
 		"from": "Portfolio <no-reply@rhaversen.com>",
-		"frontendBaseUrl": "http://localhost:3000"
+		"frontendBaseUrl": "http://localhost:3000",
+		"port": 587
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",
