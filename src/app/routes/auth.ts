@@ -1,11 +1,13 @@
 import { Router } from 'express'
 
 import {
+	confirmDeletion,
 	confirmEmail,
 	forgotPassword,
 	getMe,
 	loginUserLocal,
 	logoutLocal,
+	requestDeletion,
 	resendConfirmation,
 	resetPassword
 } from '../controllers/authController.js'
@@ -30,5 +32,9 @@ router.post('/resend-confirmation', ensureAuthenticated, resendConfirmation)
 router.post('/forgot-password', forgotPassword)
 
 router.post('/reset-password', resetPassword)
+
+router.post('/request-deletion', ensureAuthenticated, requestDeletion)
+
+router.post('/confirm-deletion/:code', confirmDeletion)
 
 export default router

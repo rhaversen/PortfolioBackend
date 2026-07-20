@@ -42,7 +42,8 @@
 	},
 	"user": {
 		"verificationExpiry": 86400000,
-		"passwordResetExpiry": 86400000
+		"passwordResetExpiry": 86400000,
+		"deletionExpiry": 3600000
 	},
 	"email": {
 		"from": "Portfolio <no-reply@rhave.dk>",

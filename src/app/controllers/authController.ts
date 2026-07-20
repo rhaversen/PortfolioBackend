@@ -206,3 +206,59 @@ export async function resetPassword (req: Request, res: Response): Promise<void>
 	logger.info(`User ${user.email} reset their password`)
 	res.status(200).json({ message: 'Password reset successfully' })
 }
+
+export async function requestDeletion (req: Request, res: Response): Promise<void> {
+	const user = req.user
+
+	if (user === undefined) {
+		res.status(401).json({ error: 'Unauthorized' })
+		return
+	}
+
+	const dbUser = await UserModel.findById(user.id).exec()
+	if (dbUser === null) {
+		res.status(404).json({ error: 'User not found' })
+		return
+	}
+
+	const newCode = await dbUser.generateNewDeletionCode()
+	await dbUser.save()
+
+	await emailService.sendDeletionEmail(dbUser.email, newCode)
+	logger.info(`User ${dbUser.email} requested account deletion`)
+	res.status(200).json({ message: 'If your account exists, a deletion link has been sent.' })
+}
+
+export async function confirmDeletion (req: Request, res: Response): Promise<void> {
+	const { code } = req.params
+
+	const user = await UserModel.findOne({ deletionCode: code }).exec()
+
+	if (user === null) {
+		res.status(404).json({ error: 'Invalid or expired deletion code' })
+		return
+	}
+
+	if (user.deletionExpirationDate !== undefined && new Date() >= user.deletionExpirationDate) {
+		res.status(400).json({ error: 'Deletion code has expired' })
+		return
+	}
+
+	logger.info(`User ${user.email} is deleting their account`)
+
+	await req.logout(async function (logoutErr) {
+		if (logoutErr !== null && logoutErr !== undefined) {
+			logger.error('Error logging out during account deletion', { error: logoutErr })
+		}
+
+		await UserModel.findByIdAndDelete(user.id).exec()
+
+		req.session.destroy(function (sessionErr) {
+			if (sessionErr !== null && sessionErr !== undefined) {
+				logger.error('Error destroying session during account deletion', { error: sessionErr })
+			}
+			res.clearCookie('connect.sid')
+			res.status(200).json({ message: 'Account deleted successfully' })
+		})
+	})
+}

@@ -11,7 +11,7 @@ const router = Router()
 
 router.post('/', register)
 
-router.get('/:id', ensureAuthenticated, getUser)
+router.get('/:id', getUser)
 
 router.patch('/:id', ensureAuthenticated, updateUser)
 

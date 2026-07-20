@@ -30,6 +30,7 @@ const AppConfig = {
 	sessionExpiry: config.get('session.expiry') as number,
 	verificationExpiry: config.get('user.verificationExpiry') as number,
 	passwordResetExpiry: config.get('user.passwordResetExpiry') as number,
+	deletionExpiry: config.get('user.deletionExpiry') as number,
 	emailFrom: config.get('email.from') as string,
 	emailFrontendBaseUrl: config.get('email.frontendBaseUrl') as string,
 	llmModel: config.get('llm.model') as string,

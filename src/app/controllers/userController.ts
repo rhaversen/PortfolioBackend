@@ -43,12 +43,14 @@ export async function getUser (req: Request, res: Response): Promise<void> {
 		return
 	}
 
+	const isOwnProfile = paramUser.id === user?.id
+
 	const mappedUser = {
 		_id: paramUser.id,
 		username: paramUser.username,
-		email: paramUser.id === user?.id ? paramUser.email : null,
-		expirationDate: paramUser.id === user?.id ? paramUser.expirationDate : null,
-		confirmed: paramUser.id === user?.id ? paramUser.confirmed : null,
+		email: isOwnProfile ? paramUser.email : null,
+		expirationDate: isOwnProfile ? paramUser.expirationDate : null,
+		confirmed: isOwnProfile ? paramUser.confirmed : null,
 		createdAt: paramUser.createdAt,
 		updatedAt: paramUser.updatedAt
 	}

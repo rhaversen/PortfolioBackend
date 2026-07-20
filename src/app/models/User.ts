@@ -61,7 +61,8 @@ function generateFunnyUsername (): string {
 const {
 	bcryptSaltRounds,
 	verificationExpiry,
-	passwordResetExpiry
+	passwordResetExpiry,
+	deletionExpiry
 } = config
 
 export interface IUser extends Document {
@@ -74,12 +75,15 @@ export interface IUser extends Document {
 	passwordResetExpirationDate?: Date
 	confirmationCode?: string
 	passwordResetCode?: string
+	deletionCode?: string
+	deletionExpirationDate?: Date
 
 	comparePassword: (password: string) => Promise<boolean>
 	confirmUser: () => void
 	resetPassword: (newPassword: string, passwordResetCode: string) => Promise<void>
 	generateNewConfirmationCode: () => Promise<string>
 	generateNewPasswordResetCode: () => Promise<string>
+	generateNewDeletionCode: () => Promise<string>
 
 	createdAt: Date
 	updatedAt: Date
@@ -122,6 +126,12 @@ const userSchema = new Schema<IUser>({
 	},
 	passwordResetExpirationDate: {
 		type: Schema.Types.Date
+	},
+	deletionCode: {
+		type: Schema.Types.String
+	},
+	deletionExpirationDate: {
+		type: Schema.Types.Date
 	}
 }, {
 	timestamps: true
@@ -135,7 +145,7 @@ userSchema.methods.confirmUser = function () {
 	this.confirmationCode = undefined
 }
 
-type CodeFields = 'confirmationCode' | 'passwordResetCode'
+type CodeFields = 'confirmationCode' | 'passwordResetCode' | 'deletionCode'
 
 async function generateUniqueCodeForField (field: CodeFields): Promise<string> {
 	let generatedCode: string
@@ -161,6 +171,13 @@ userSchema.methods.generateNewPasswordResetCode = async function (): Promise<str
 	this.passwordResetCode = newPasswordResetCode
 	this.passwordResetExpirationDate = new Date(Date.now() + passwordResetExpiry)
 	return newPasswordResetCode
+}
+
+userSchema.methods.generateNewDeletionCode = async function (): Promise<string> {
+	const newDeletionCode = await generateUniqueCodeForField('deletionCode')
+	this.deletionCode = newDeletionCode
+	this.deletionExpirationDate = new Date(Date.now() + deletionExpiry)
+	return newDeletionCode
 }
 
 userSchema.methods.resetPassword = async function (newPassword: string, passwordResetCode: string): Promise<void> {

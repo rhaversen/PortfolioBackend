@@ -94,7 +94,40 @@ async function sendPasswordResetEmail (toEmail: string, code: string): Promise<{
 	}
 }
 
+async function sendDeletionEmail (toEmail: string, code: string): Promise<{ sent: boolean }> {
+	try {
+		const mailTransporter = await getTransporter()
+		const deletionUrl = `${config.emailFrontendBaseUrl}/delete-account/${code}`
+
+		const info = await mailTransporter.sendMail({
+			from: config.emailFrom,
+			to: toEmail,
+			subject: 'Confirm deletion of your Portfolio account',
+			text: `A request was made to delete your Portfolio account.
+
+To confirm deletion, visit the following link:
+${deletionUrl}
+
+This link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.`,
+			html: `<h2>Account deletion request</h2><p>A request was made to delete your Portfolio account.</p><p><a href="${deletionUrl}">${deletionUrl}</a></p><p style="color:#6b7280">This link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.</p>`
+		})
+
+		if (NODE_ENV !== 'production' && NODE_ENV !== 'staging') {
+			const previewUrl = nodemailer.getTestMessageUrl(info)
+			logger.info(`Deletion email sent to ${toEmail}. Preview: ${previewUrl}`)
+		} else {
+			logger.info(`Deletion email sent to ${toEmail}`)
+		}
+
+		return { sent: true }
+	} catch (error) {
+		logger.error(`Failed to send deletion email to ${toEmail}`, { error })
+		return { sent: false }
+	}
+}
+
 export default {
 	sendConfirmationEmail,
-	sendPasswordResetEmail
+	sendPasswordResetEmail,
+	sendDeletionEmail
 }
