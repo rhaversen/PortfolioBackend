@@ -8,11 +8,10 @@ const envSecrets = [
 	'DB_HOST',
 	// Session
 	'SESSION_SECRET',
-	// Email
-	'EMAIL_HOST',
-	'EMAIL_PORT',
-	'EMAIL_USER',
-	'EMAIL_PASSWORD',
+	// Email SMTP
+	'SMTP_SERVER',
+	'SMTP_LOGIN',
+	'SMTP_KEY',
 	// LLM
 	'ANTHROPIC_API_KEY'
 ]

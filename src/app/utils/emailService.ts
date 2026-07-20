@@ -13,14 +13,14 @@ async function getTransporter (): Promise<Transporter> {
 	}
 
 	if (NODE_ENV === 'production' || NODE_ENV === 'staging') {
-		const { EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD } = process.env as Record<string, string>
+		const { SMTP_SERVER, SMTP_LOGIN, SMTP_KEY } = process.env as Record<string, string>
 		transporter = nodemailer.createTransport({
-			host: EMAIL_HOST,
-			port: Number(EMAIL_PORT),
-			secure: Number(EMAIL_PORT) === 465,
+			host: SMTP_SERVER,
+			port: config.emailPort,
+			secure: config.emailPort === 465,
 			auth: {
-				user: EMAIL_USER,
-				pass: EMAIL_PASSWORD
+				user: SMTP_LOGIN,
+				pass: SMTP_KEY
 			}
 		})
 	} else {
