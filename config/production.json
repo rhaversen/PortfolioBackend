@@ -15,8 +15,39 @@
 	},
 	"expressPort": 5001,
 	"cors": {
-		"origin": "https://rhaversen.dk",
+		"origin": "https://rhaversen.com",
 		"credentials": true
+	},
+	"mongoose": {
+		"retrySettings": {
+			"maxAttempts": 5,
+			"interval": 5000
+		},
+		"options": {
+			"retryWrites": "true",
+			"w": "majority",
+			"appName": "main"
+		}
+	},
+	"bcrypt": {
+		"saltRounds": 10
+	},
+	"cookieOptions": {
+		"httpOnly": true,
+		"secure": true,
+		"sameSite": "strict"
+	},
+	"session": {
+		"expiry": 5184000000
+	},
+	"user": {
+		"verificationExpiry": 86400000,
+		"passwordResetExpiry": 86400000,
+		"deletionExpiry": 3600000
+	},
+	"email": {
+		"from": "Portfolio <no-reply@rhaversen.com>",
+		"frontendBaseUrl": "https://rhaversen.com"
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",

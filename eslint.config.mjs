@@ -109,6 +109,15 @@ export default tseslint.config(
 	},
 
 	{
+		files: ['src/app/utils/passportConfig.ts', 'src/types/**/*.d.ts'],
+		rules: {
+			'@typescript-eslint/no-namespace': 'off',
+			'@typescript-eslint/no-empty-object-type': 'off',
+			'@typescript-eslint/no-explicit-any': 'off'
+		}
+	},
+
+	{
 		files: ['src/test/**/*.ts'],
 		rules: {
 			'n/no-unpublished-import': 'off',
