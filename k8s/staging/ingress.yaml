@@ -21,10 +21,10 @@ spec:
     ingressClassName: nginx
     tls:
         -   hosts:
-                - staging.rhaversen.dk
+                - staging.rhaversen.com
             secretName: backend-tls
     rules:
-        -   host: staging.rhaversen.dk
+        -   host: staging.rhaversen.com
             http:
                 paths:
                     # API Path
