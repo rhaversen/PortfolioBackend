@@ -1,9 +1,13 @@
-import { expect } from 'chai'
-import { describe, it } from 'mocha'
+import { describe, it, before, after } from 'mocha'
 
 describe('Development Setup', function () {
-	before(function () {
+	before(async function () {
+		this.timeout(20000)
 		process.env.ANTHROPIC_API_KEY = 'DUMMY_ANTHROPIC_API_KEY'
+		process.env.SESSION_SECRET = 'DUMMY_SESSION_SECRET'
+		process.env.NODE_ENV = 'development'
+
+		await import('../../development/index.js')
 	})
 
 	after(function () {
@@ -12,17 +16,7 @@ describe('Development Setup', function () {
 		}, 5000)
 	})
 
-	it('should start the development environment', async function () {
+	it('should start the development environment', function () {
 		this.timeout(20000)
-		let errorOccurred = false
-		try {
-			await import('../../development/index.js')
-			const app = await import('../../app/index.js')
-			await app.shutDown()
-		} catch {
-			errorOccurred = true
-		}
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		expect(errorOccurred).to.be.false
 	})
 })

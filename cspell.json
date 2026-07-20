@@ -15,7 +15,9 @@
         "package.json",
         "package-lock.json",
         "tsconfig.json",
-        "dist/**"
+        "dist/**",
+        "*.spec.ts",
+        "src/test/*"
     ],
     "ignoreWords": [
         "rasmus",
@@ -30,6 +32,8 @@
         "underspecified",
         "giveup",
         "oneword",
-        "conv"
+        "conv",
+        "derpy",
+        "maxlength"
     ]
 }
