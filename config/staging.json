@@ -15,7 +15,7 @@
 	},
 	"expressPort": 5001,
 	"cors": {
-		"origin": "https://staging.rhaversen.dk",
+		"origin": "https://staging.rhaversen.com",
 		"credentials": true
 	},
 	"mongoose": {
@@ -46,8 +46,8 @@
 		"deletionExpiry": 3600000
 	},
 	"email": {
-		"from": "Portfolio <no-reply@rhave.dk>",
-		"frontendBaseUrl": "https://staging.rhaversen.dk"
+		"from": "Portfolio <no-reply@rhaversen.com>",
+		"frontendBaseUrl": "https://staging.rhaversen.com"
 	},
 	"llm": {
 		"model": "claude-haiku-4-5",

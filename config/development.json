@@ -46,7 +46,7 @@
 		"deletionExpiry": 3600000
 	},
 	"email": {
-		"from": "Portfolio <no-reply@rhave.dk>",
+		"from": "Portfolio <no-reply@rhaversen.com>",
 		"frontendBaseUrl": "http://localhost:3000"
 	},
 	"llm": {
