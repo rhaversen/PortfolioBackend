@@ -42,7 +42,11 @@ const winstonLogger = createLogger({
 				_format.colorize(),
 				_format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
 				_format.printf((logObject) => {
-					return `${logObject['timestamp']} ${logObject.level}: ${logObject.message}`
+					const meta = Object.entries(logObject)
+						.filter(([key]) => !['timestamp', 'level', 'message', 'service'].includes(key))
+						.map(([key, value]) => `${key}=${value instanceof Error ? value.stack ?? value.message : JSON.stringify(value)}`)
+						.join(' ')
+					return `${logObject['timestamp']} ${logObject.level}: ${logObject.message}${meta ? ' ' + meta : ''}`
 				})
 			),
 			level: logLevel[process.env.NODE_ENV as keyof typeof logLevel] ?? 'info'
