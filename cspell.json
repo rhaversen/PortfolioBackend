@@ -17,7 +17,8 @@
         "tsconfig.json",
         "dist/**",
         "*.spec.ts",
-        "src/test/*"
+        "src/test/*",
+        "docs/**"
     ],
     "ignoreWords": [
         "rasmus",
