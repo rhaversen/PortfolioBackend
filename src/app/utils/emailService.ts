@@ -44,13 +44,14 @@ async function sendConfirmationEmail (toEmail: string, code: string): Promise<{ 
 	try {
 		const mailTransporter = await getTransporter()
 		const confirmationUrl = `${config.emailFrontendBaseUrl}/confirm/${code}`
+		const manualUrl = `${config.emailFrontendBaseUrl}/confirm`
 
 		const info = await mailTransporter.sendMail({
 			from: config.emailFrom,
 			to: toEmail,
 			subject: 'Confirm your Portfolio account',
-			text: `Welcome to Portfolio!\n\nPlease confirm your email by visiting the following link:\n${confirmationUrl}\n\nThis link expires in 24 hours.`,
-			html: `<h2>Welcome to Portfolio!</h2><p>Please confirm your email by clicking the link below:</p><p><a href="${confirmationUrl}">${confirmationUrl}</a></p><p style="color:#6b7280">This link expires in 24 hours.</p>`
+			text: `Welcome to Portfolio!\n\nPlease confirm your email by visiting the following link:\n${confirmationUrl}\n\nAlternatively, go to ${manualUrl} and paste this confirmation code:\n${code}\n\nThis link expires in 24 hours.`,
+			html: `<h2>Welcome to Portfolio!</h2><p>Please confirm your email by clicking the link below:</p><p><a href="${confirmationUrl}">${confirmationUrl}</a></p><p>Alternatively, go to <a href="${manualUrl}">${manualUrl}</a> and paste this confirmation code:</p><p style="font-family:monospace;font-size:1.1em;padding:8px 12px;background:#f3f4f6;border-radius:4px;display:inline-block">${code}</p><p style="color:#6b7280">This link expires in 24 hours.</p>`
 		})
 
 		if (NODE_ENV !== 'production' && NODE_ENV !== 'staging') {
@@ -71,13 +72,14 @@ async function sendPasswordResetEmail (toEmail: string, code: string): Promise<{
 	try {
 		const mailTransporter = await getTransporter()
 		const resetUrl = `${config.emailFrontendBaseUrl}/reset-password?code=${code}`
+		const manualUrl = `${config.emailFrontendBaseUrl}/reset-password`
 
 		const info = await mailTransporter.sendMail({
 			from: config.emailFrom,
 			to: toEmail,
 			subject: 'Reset your Portfolio password',
-			text: `A password reset was requested for your Portfolio account.\n\nReset your password by visiting the following link:\n${resetUrl}\n\nThis link expires in 24 hours. If you did not request a reset, you can safely ignore this email.`,
-			html: `<h2>Reset your password</h2><p>A password reset was requested for your Portfolio account.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p style="color:#6b7280">This link expires in 24 hours. If you did not request a reset, you can safely ignore this email.</p>`
+			text: `A password reset was requested for your Portfolio account.\n\nReset your password by visiting the following link:\n${resetUrl}\n\nAlternatively, go to ${manualUrl} and paste this reset code:\n${code}\n\nThis link expires in 24 hours. If you did not request a reset, you can safely ignore this email.`,
+			html: `<h2>Reset your password</h2><p>A password reset was requested for your Portfolio account.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Alternatively, go to <a href="${manualUrl}">${manualUrl}</a> and paste this reset code:</p><p style="font-family:monospace;font-size:1.1em;padding:8px 12px;background:#f3f4f6;border-radius:4px;display:inline-block">${code}</p><p style="color:#6b7280">This link expires in 24 hours. If you did not request a reset, you can safely ignore this email.</p>`
 		})
 
 		if (NODE_ENV !== 'production' && NODE_ENV !== 'staging') {
@@ -103,13 +105,8 @@ async function sendDeletionEmail (toEmail: string, code: string): Promise<{ sent
 			from: config.emailFrom,
 			to: toEmail,
 			subject: 'Confirm deletion of your Portfolio account',
-			text: `A request was made to delete your Portfolio account.
-
-To confirm deletion, visit the following link:
-${deletionUrl}
-
-This link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.`,
-			html: `<h2>Account deletion request</h2><p>A request was made to delete your Portfolio account.</p><p><a href="${deletionUrl}">${deletionUrl}</a></p><p style="color:#6b7280">This link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.</p>`
+			text: `A request was made to delete your Portfolio account.\n\nTo confirm deletion, visit the following link:\n${deletionUrl}\n\nYour deletion code (in case the link doesn't work):\n${code}\n\nThis link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.`,
+			html: `<h2>Account deletion request</h2><p>A request was made to delete your Portfolio account.</p><p><a href="${deletionUrl}">${deletionUrl}</a></p><p>Your deletion code (in case the link doesn't work):</p><p style="font-family:monospace;font-size:1.1em;padding:8px 12px;background:#f3f4f6;border-radius:4px;display:inline-block">${code}</p><p style="color:#6b7280">This link expires in 1 hour. If you did not request this, you can safely ignore this email and your account will not be deleted.</p>`
 		})
 
 		if (NODE_ENV !== 'production' && NODE_ENV !== 'staging') {

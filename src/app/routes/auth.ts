@@ -7,8 +7,8 @@ import {
 	getMe,
 	loginUserLocal,
 	logoutLocal,
+	requestConfirmation,
 	requestDeletion,
-	resendConfirmation,
 	resetPassword
 } from '../controllers/authController.js'
 import { ensureAuthenticated } from '../middleware/auth.js'
@@ -27,7 +27,7 @@ router.get('/is-authenticated', ensureAuthenticated, (req, res) => {
 
 router.post('/confirm/:code', confirmEmail)
 
-router.post('/resend-confirmation', ensureAuthenticated, resendConfirmation)
+router.post('/request-confirmation', requestConfirmation)
 
 router.post('/forgot-password', forgotPassword)
 
