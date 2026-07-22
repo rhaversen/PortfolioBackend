@@ -10,7 +10,8 @@ export async function register (req: Request, res: Response, next: NextFunction)
 	const body: Record<string, unknown> = {
 		email: req.body.email,
 		password: req.body.password,
-		confirmPassword: req.body.confirmPassword
+		confirmPassword: req.body.confirmPassword,
+		username: req.body.username
 	}
 
 	if (body.password !== body.confirmPassword) {
@@ -24,14 +25,41 @@ export async function register (req: Request, res: Response, next: NextFunction)
 	const existingUser = await UserModel.findOne({ email: body.email as string }).exec()
 
 	if (existingUser === null) {
-		const newUser = await UserModel.create({
+		const createData: Record<string, unknown> = {
 			email: body.email as string,
 			password: body.password as string
-		})
+		}
+		if (typeof body.username === 'string' && body.username.trim().length > 0) {
+			createData.username = body.username.trim()
+		}
+		const newUser = await UserModel.create(createData)
 		await emailService.sendConfirmationEmail(newUser.email, newUser.confirmationCode as string)
 	}
 
 	loginUserLocal(req, res, next)
+}
+
+export async function getAllUsers (req: Request, res: Response, next: NextFunction): Promise<void> {
+	try {
+		const users = await UserModel.find().exec()
+
+		const mappedUsers = users.map(u => {
+			const isOwnProfile = u.id === req.user?.id
+			return {
+				_id: u.id,
+				username: u.username,
+				email: isOwnProfile ? u.email : null,
+				expirationDate: isOwnProfile ? u.expirationDate : null,
+				confirmed: isOwnProfile ? u.confirmed : null,
+				createdAt: u.createdAt,
+				updatedAt: u.updatedAt
+			}
+		})
+
+		res.status(200).json(mappedUsers)
+	} catch (error) {
+		next(error)
+	}
 }
 
 export async function getUser (req: Request, res: Response): Promise<void> {
