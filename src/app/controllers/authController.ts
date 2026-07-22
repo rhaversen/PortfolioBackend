@@ -135,30 +135,23 @@ export async function confirmEmail (req: Request, res: Response): Promise<void> 
 	res.status(200).json({ message: 'Email confirmed successfully', confirmed: true })
 }
 
-export async function resendConfirmation (req: Request, res: Response): Promise<void> {
-	const user = req.user
+export async function requestConfirmation (req: Request, res: Response): Promise<void> {
+	const { email } = req.body
 
-	if (user === undefined) {
-		res.status(401).json({ error: 'Unauthorized' })
+	if (email === undefined) {
+		res.status(400).json({ error: 'Email must be provided' })
 		return
 	}
 
-	if (user.confirmed) {
-		res.status(400).json({ error: 'Email is already confirmed' })
-		return
+	const user = await UserModel.findOne({ email: email.toLowerCase() }).exec()
+
+	if (user !== null && !user.confirmed) {
+		const newCode = await user.generateNewConfirmationCode()
+		await user.save()
+		await emailService.sendConfirmationEmail(user.email, newCode)
 	}
 
-	const dbUser = await UserModel.findById(user.id).exec()
-	if (dbUser === null) {
-		res.status(404).json({ error: 'User not found' })
-		return
-	}
-
-	const newCode = await dbUser.generateNewConfirmationCode()
-	await dbUser.save()
-
-	await emailService.sendConfirmationEmail(dbUser.email, newCode)
-	res.status(200).json({ message: 'Confirmation email resent' })
+	res.status(200).json({ message: 'If that email exists and is unconfirmed, a confirmation email has been sent.' })
 }
 
 export async function forgotPassword (req: Request, res: Response): Promise<void> {
