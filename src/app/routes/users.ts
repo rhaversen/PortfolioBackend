@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
 import {
+	getAllUsers,
 	getUser,
 	register,
 	updateUser
@@ -10,6 +11,8 @@ import { ensureAuthenticated } from '../middleware/auth.js'
 const router = Router()
 
 router.post('/', register)
+
+router.get('/', getAllUsers)
 
 router.get('/:id', getUser)
 
