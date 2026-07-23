@@ -19,6 +19,9 @@ import { disconnectFromInMemoryMongoDB } from './mongoMemoryReplSetConnector.js'
 process.env.NODE_ENV = 'test'
 process.env.SESSION_SECRET = 'TEST_SESSION_SECRET'
 process.env.ANTHROPIC_API_KEY = 'TEST_ANTHROPIC_API_KEY'
+process.env.SPOTIFY_CLIENT_ID = 'TEST_SPOTIFY_CLIENT_ID'
+process.env.SPOTIFY_CLIENT_SECRET = 'TEST_SPOTIFY_CLIENT_SECRET'
+process.env.SPOTIFY_TOKEN_ENCRYPTION_KEY = 'TEST_SPOTIFY_TOKEN_ENCRYPTION_KEY_32bytes'
 
 const chaiHttpObject = chai.use(chaiHttp)
 let app: { server: Server, sessionStore: MongoStore | undefined }

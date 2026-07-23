@@ -50,6 +50,11 @@
 		"frontendBaseUrl": "http://localhost:3000",
 		"port": 587
 	},
+	"spotify": {
+		"redirectUri": "http://localhost:5001/api/v1/spotify/callback",
+		"scopes": "user-top-read user-read-recently-played user-library-read user-read-playback-state user-read-currently-playing",
+		"frontendRedirectPath": "/accounts"
+	},
 	"llm": {
 		"model": "claude-haiku-4-5",
 		"brainwashMaxTokens": 512,

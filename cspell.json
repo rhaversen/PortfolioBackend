@@ -35,6 +35,9 @@
         "oneword",
         "conv",
         "derpy",
-        "maxlength"
+        "maxlength",
+        "cryptr",
+        "ngrok",
+        "authtoken"
     ]
 }

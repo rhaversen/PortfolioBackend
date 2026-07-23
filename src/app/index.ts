@@ -16,6 +16,7 @@ import { Server } from 'socket.io'
 import globalErrorHandler from './middleware/globalErrorHandler.js'
 import authRoutes from './routes/auth.js'
 import serviceRoutes from './routes/service.js'
+import spotifyRoutes from './routes/spotify.js'
 import userRoutes from './routes/users.js'
 import databaseConnector from './utils/databaseConnector.js'
 import logger from './utils/logger.js'
@@ -86,6 +87,7 @@ app.use(sustainedLimiter)
 
 app.use('/api/service', serviceRoutes)
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/spotify', spotifyRoutes)
 app.use('/api/v1/users', userRoutes)
 
 app.use(globalErrorHandler)
