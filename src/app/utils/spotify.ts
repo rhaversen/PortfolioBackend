@@ -113,3 +113,67 @@ export async function getSpotifyUserId (accessToken: string): Promise<SpotifyUse
 
 	return await res.json() as SpotifyUserProfile
 }
+
+export interface SpotifyArtist {
+	id: string
+	name: string
+}
+
+export interface SpotifyAlbum {
+	id: string
+	name: string
+	images: Array<{ url: string, height: number, width: number }>
+}
+
+export interface SpotifyTrack {
+	id: string
+	name: string
+	artists: SpotifyArtist[]
+	album: SpotifyAlbum
+	duration_ms: number
+	external_urls: { spotify: string }
+}
+
+export interface SpotifyPlayHistoryItem {
+	track: SpotifyTrack
+	played_at: string
+}
+
+export interface SpotifyRecentlyPlayedResponse {
+	href: string
+	limit: number
+	next: string | null
+	cursors: { after: string, before: string }
+	total: number
+	items: SpotifyPlayHistoryItem[]
+}
+
+export async function getRecentlyPlayed (accessToken: string, limit = 20): Promise<SpotifyRecentlyPlayedResponse> {
+	const res = await fetch(`${SPOTIFY_API_BASE_URL}/me/player/recently-played?limit=${limit}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	})
+
+	if (!res.ok) {
+		const errorBody = await res.text()
+		throw new Error(`Spotify recently played fetch failed (${res.status}): ${errorBody}`)
+	}
+
+	return await res.json() as SpotifyRecentlyPlayedResponse
+}
+
+export async function getRecentlyPlayedBefore (accessToken: string, before: number, limit = 50): Promise<SpotifyRecentlyPlayedResponse> {
+	const params = new URLSearchParams({
+		limit: String(limit),
+		before: String(before)
+	})
+	const res = await fetch(`${SPOTIFY_API_BASE_URL}/me/player/recently-played?${params.toString()}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	})
+
+	if (!res.ok) {
+		const errorBody = await res.text()
+		throw new Error(`Spotify recently played fetch failed (${res.status}): ${errorBody}`)
+	}
+
+	return await res.json() as SpotifyRecentlyPlayedResponse
+}

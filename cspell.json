@@ -38,6 +38,12 @@
         "maxlength",
         "cryptr",
         "ngrok",
-        "authtoken"
+        "authtoken",
+        "upsert",
+        "upserts",
+        "upserted",
+        "upserting",
+        "dedup",
+        "dedupe"
     ]
 }

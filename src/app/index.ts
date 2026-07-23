@@ -22,6 +22,7 @@ import databaseConnector from './utils/databaseConnector.js'
 import logger from './utils/logger.js'
 import configurePassport from './utils/passportConfig.js'
 import config from './utils/setupConfig.js'
+import { startSpotifyHistoryPoller, stopSpotifyHistoryPoller } from './utils/spotifyHistoryPoller.js'
 import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
@@ -107,10 +108,12 @@ io.on('connection', (socket) => {
 
 server.listen(config.expressPort, () => {
 	logger.info(`Server listening on port ${config.expressPort}`)
+	startSpotifyHistoryPoller()
 })
 
 export async function shutDown (): Promise<void> {
 	logger.info('Closing server...')
+	stopSpotifyHistoryPoller()
 	server.close()
 	if (sessionStore !== undefined) {
 		await sessionStore.close().catch((err: unknown) => logger.error('Error closing session store', { error: err }))

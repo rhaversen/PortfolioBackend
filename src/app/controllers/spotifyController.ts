@@ -1,4 +1,5 @@
 import { type Request, type Response } from 'express'
+import { type Types } from 'mongoose'
 import { nanoid } from 'nanoid'
 
 import SpotifyAccountModel from '../models/SpotifyAccount.js'
@@ -12,6 +13,7 @@ import {
 	exchangeCodeForTokens,
 	getSpotifyUserId
 } from '../utils/spotify.js'
+import { backfillHistory } from '../utils/spotifyHistorySync.js'
 
 const {
 	spotifyFrontendRedirectPath,
@@ -83,6 +85,17 @@ export async function handleCallback (req: Request, res: Response): Promise<void
 
 		logger.info(`User ${userId} connected Spotify account ${profile.id}`)
 		res.redirect(buildFrontendRedirect(String(userId), 'connected'))
+
+		// Fire-and-forget backfill so the redirect isn't delayed. The background
+		// poller will also pick up ongoing plays every 5 minutes.
+		void backfillHistory(userId as unknown as Types.ObjectId, tokens.access_token)
+			.then((result) => {
+				logger.info(`Auto-backfill after connect for user ${userId}: ${result.listensInserted} listens, ${result.songsUpserted} songs`)
+			})
+			.catch((err: unknown) => {
+				const message = err instanceof Error ? err.message : 'Unknown error'
+				logger.error(`Auto-backfill after connect failed for user ${userId}: ${message}`, { error: err })
+			})
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unknown error'
 		logger.error(`Spotify connection failed for user ${userId}: ${message}`, { error: err })
