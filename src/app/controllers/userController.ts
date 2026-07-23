@@ -4,8 +4,6 @@ import mongoose from 'mongoose'
 import UserModel from '../models/User.js'
 import emailService from '../utils/emailService.js'
 
-import { loginUserLocal } from './authController.js'
-
 export async function register (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const body: Record<string, unknown> = {
 		email: req.body.email,
@@ -16,7 +14,6 @@ export async function register (req: Request, res: Response, next: NextFunction)
 
 	if (body.password !== body.confirmPassword) {
 		res.status(400).json({
-			auth: false,
 			error: 'Passwords do not match'
 		})
 		return
@@ -24,7 +21,14 @@ export async function register (req: Request, res: Response, next: NextFunction)
 
 	const existingUser = await UserModel.findOne({ email: body.email as string }).exec()
 
-	if (existingUser === null) {
+	if (existingUser !== null) {
+		res.status(409).json({
+			error: 'An account with that email already exists'
+		})
+		return
+	}
+
+	try {
 		const createData: Record<string, unknown> = {
 			email: body.email as string,
 			password: body.password as string
@@ -34,9 +38,19 @@ export async function register (req: Request, res: Response, next: NextFunction)
 		}
 		const newUser = await UserModel.create(createData)
 		await emailService.sendConfirmationEmail(newUser.email, newUser.confirmationCode as string)
-	}
 
-	loginUserLocal(req, res, next)
+		res.status(201).json({
+			_id: newUser._id,
+			username: newUser.username,
+			email: newUser.email,
+			confirmed: newUser.confirmed,
+			expirationDate: newUser.expirationDate,
+			createdAt: newUser.createdAt,
+			updatedAt: newUser.updatedAt
+		})
+	} catch (error) {
+		next(error)
+	}
 }
 
 export async function getAllUsers (req: Request, res: Response, next: NextFunction): Promise<void> {
