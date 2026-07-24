@@ -2,13 +2,12 @@ import { type Types } from 'mongoose'
 
 import ListenModel from '../models/Listen.js'
 import SongModel from '../models/Song.js'
-import SpotifyAccountModel from '../models/SpotifyAccount.js'
 
 import { type LastfmRecentTracksResponse, type LastfmTrack, getRecentTracks } from './lastfm.js'
 import logger from './logger.js'
 import config from './setupConfig.js'
-import { searchTracks } from './spotify.js'
-import { ensureValidAccessToken, upsertSong } from './spotifyHistorySync.js'
+import { getClientCredentialsToken, searchTracks } from './spotify.js'
+import { upsertSong } from './spotifyHistorySync.js'
 
 const {
 	lastfmBackfillMaxPages,
@@ -32,13 +31,13 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 /**
  * Resolves a Last.fm scrobble to a Song document. Strategy:
  * 1. Check backend cache by normalized artist+name match
- * 2. If not found and user has a connected Spotify account, search Spotify
- *    catalog and upsert the result into the Song collection
- * 3. If no Spotify account or search returns nothing, skip the scrobble
+ * 2. If not found, search the Spotify catalog (server-to-server) and upsert
+ *    the result into the Song collection
+ * 3. If the search returns nothing, skip the scrobble
  */
 async function resolveSong (
 	track: LastfmTrack,
-	spotifyAccessToken: string | null
+	spotifyAccessToken: string
 ): Promise<Types.ObjectId | null> {
 	const artistName = track.artist['#text']
 	const trackName = track.name
@@ -55,8 +54,6 @@ async function resolveSong (
 	}
 
 	// 2. Spotify search to resolve to a canonical track
-	if (spotifyAccessToken === null) { return null }
-
 	try {
 		const results = await searchTracks(spotifyAccessToken, artistName, trackName, 1)
 		if (results.length === 0) { return null }
@@ -80,7 +77,7 @@ async function resolveSong (
 async function storeScrobbleBatch (
 	userId: Types.ObjectId,
 	tracks: LastfmTrack[],
-	spotifyAccessToken: string | null
+	spotifyAccessToken: string
 ): Promise<{ songsResolved: number, songsSkipped: number, inserted: number, skipped: number }> {
 	let songsResolved = 0
 	let songsSkipped = 0
@@ -119,21 +116,12 @@ async function storeScrobbleBatch (
 }
 
 /**
- * Gets a valid Spotify access token for the user, or null if they have no
- * connected Spotify account. Used to search the Spotify catalog for resolving
+ * Gets a server-to-server Spotify access token via the Client Credentials flow.
+ * No user context needed — used to search the Spotify catalog for resolving
  * Last.fm scrobbles to Song documents.
  */
-async function getSpotifyToken (userId: Types.ObjectId): Promise<string | null> {
-	const account = await SpotifyAccountModel.findOne({ userId }).exec()
-	if (account === null) { return null }
-
-	try {
-		return await ensureValidAccessToken(userId, account)
-	} catch (err: unknown) {
-		const message = err instanceof Error ? err.message : 'Unknown error'
-		logger.warn(`Could not get Spotify access token for user ${userId}: ${message}`)
-		return null
-	}
+async function getServerSpotifyToken (): Promise<string> {
+	return await getClientCredentialsToken()
 }
 
 /**
@@ -148,10 +136,7 @@ export async function backfillLastfmHistory (
 	logger.info(`Last.fm backfill started for user ${userId} (username: ${lastfmUsername})`)
 	const result: LastfmSyncResult = { songsResolved: 0, songsSkipped: 0, listensInserted: 0, listensSkipped: 0, pagesFetched: 0 }
 
-	const spotifyToken = await getSpotifyToken(userId)
-	if (spotifyToken === null) {
-		logger.warn(`User ${userId} has no connected Spotify account — Last.fm scrobbles cannot be resolved to songs`)
-	}
+	const spotifyToken = await getServerSpotifyToken()
 
 	let page = 1
 	let totalPages = 1
@@ -203,7 +188,7 @@ export async function pollRecentScrobbles (
 	userId: Types.ObjectId,
 	lastfmUsername: string
 ): Promise<LastfmSyncResult> {
-	const spotifyToken = await getSpotifyToken(userId)
+	const spotifyToken = await getServerSpotifyToken()
 
 	const response = await getRecentTracks(lastfmUsername, 1, lastfmPollLimit)
 	const tracks = response.recenttracks.track

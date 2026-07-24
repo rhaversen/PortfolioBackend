@@ -95,6 +95,42 @@ export async function refreshAccessToken (refreshToken: string): Promise<Spotify
 	return await res.json() as SpotifyTokens
 }
 
+let cachedClientToken: string | null = null
+let cachedClientTokenExpiry = 0
+
+/**
+ * Gets a server-to-server access token via the Client Credentials flow.
+ * No user context — used for catalog searches (e.g. resolving Last.fm scrobbles).
+ * The token is cached until 1 minute before expiry.
+ */
+export async function getClientCredentialsToken (): Promise<string> {
+	const now = Date.now()
+	if (cachedClientToken !== null && now < cachedClientTokenExpiry - 60_000) {
+		return cachedClientToken
+	}
+
+	const authHeader = 'Basic ' + Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64')
+
+	const res = await fetch(SPOTIFY_TOKEN_URL, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			Authorization: authHeader
+		},
+		body: new URLSearchParams({ grant_type: 'client_credentials' })
+	})
+
+	if (!res.ok) {
+		const errorBody = await res.text()
+		throw new Error(`Spotify client credentials token failed (${res.status}): ${errorBody}`)
+	}
+
+	const json = await res.json() as { access_token: string, expires_in: number, token_type: string }
+	cachedClientToken = json.access_token
+	cachedClientTokenExpiry = now + json.expires_in * 1000
+	return json.access_token
+}
+
 export interface SpotifyUserProfile {
 	id: string
 	display_name: string | null
