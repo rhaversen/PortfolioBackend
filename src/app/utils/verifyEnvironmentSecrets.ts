@@ -17,7 +17,9 @@ const envSecrets = [
 	// Spotify
 	'SPOTIFY_CLIENT_ID',
 	'SPOTIFY_CLIENT_SECRET',
-	'SPOTIFY_TOKEN_ENCRYPTION_KEY'
+	'SPOTIFY_TOKEN_ENCRYPTION_KEY',
+	// Last.fm
+	'LASTFM_API_KEY'
 ]
 
 const envSecretsDev = [
@@ -25,7 +27,8 @@ const envSecretsDev = [
 	'ANTHROPIC_API_KEY',
 	'SPOTIFY_CLIENT_ID',
 	'SPOTIFY_CLIENT_SECRET',
-	'SPOTIFY_TOKEN_ENCRYPTION_KEY'
+	'SPOTIFY_TOKEN_ENCRYPTION_KEY',
+	'LASTFM_API_KEY'
 ]
 
 const envSecretsTest = [
@@ -33,7 +36,8 @@ const envSecretsTest = [
 	'ANTHROPIC_API_KEY',
 	'SPOTIFY_CLIENT_ID',
 	'SPOTIFY_CLIENT_SECRET',
-	'SPOTIFY_TOKEN_ENCRYPTION_KEY'
+	'SPOTIFY_TOKEN_ENCRYPTION_KEY',
+	'LASTFM_API_KEY'
 ]
 
 const missingSecrets: string[] = []

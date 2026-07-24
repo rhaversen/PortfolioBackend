@@ -177,3 +177,39 @@ export async function getRecentlyPlayedBefore (accessToken: string, before: numb
 
 	return await res.json() as SpotifyRecentlyPlayedResponse
 }
+
+export interface SpotifySearchResponse {
+	tracks: {
+		href: string
+		items: SpotifyTrack[]
+	}
+}
+
+/**
+ * Searches the Spotify catalog for a track by artist + track name.
+ * Used to resolve Last.fm scrobbles (which lack Spotify IDs) to Song documents.
+ */
+export async function searchTracks (
+	accessToken: string,
+	artist: string,
+	trackName: string,
+	limit = 1
+): Promise<SpotifyTrack[]> {
+	const query = new URLSearchParams({
+		q: `artist:"${artist}" track:"${trackName}"`,
+		type: 'track',
+		limit: String(limit)
+	})
+
+	const res = await fetch(`${SPOTIFY_API_BASE_URL}/search?${query.toString()}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	})
+
+	if (!res.ok) {
+		const errorBody = await res.text()
+		throw new Error(`Spotify search failed (${res.status}): ${errorBody}`)
+	}
+
+	const json = await res.json() as SpotifySearchResponse
+	return json.tracks.items
+}

@@ -55,6 +55,13 @@
 		"scopes": "user-top-read user-read-recently-played user-library-read user-read-playback-state user-read-currently-playing",
 		"frontendRedirectPath": "/accounts"
 	},
+	"lastfm": {
+		"apiBaseUrl": "http://ws.audioscrobbler.com/2.0/",
+		"frontendRedirectPath": "/accounts",
+		"backfillMaxPages": 500,
+		"pollLimit": 200,
+		"pollIntervalMs": 300000
+	},
 	"llm": {
 		"model": "claude-haiku-4-5",
 		"brainwashMaxTokens": 512,

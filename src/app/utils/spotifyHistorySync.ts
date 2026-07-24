@@ -29,7 +29,7 @@ export interface SyncResult {
  * Upserts a track into the Song collection (dedup by spotifyId).
  * Returns the mongoose document id.
  */
-async function upsertSong (track: SpotifyTrack): Promise<Types.ObjectId> {
+export async function upsertSong (track: SpotifyTrack): Promise<Types.ObjectId> {
 	const doc = await SongModel.findOneAndUpdate(
 		{ spotifyId: track.id },
 		{
