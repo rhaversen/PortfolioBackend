@@ -93,5 +93,6 @@ export async function getRecentTracks (
  * Fetches user info (user.getInfo) — validates the username and gets total play count.
  */
 export async function getUserInfo (username: string): Promise<LastfmUser> {
-	return await lastfmGet({ method: 'user.getinfo', user: username }) as unknown as LastfmUserInfoResponse['user']
+	const response = await lastfmGet({ method: 'user.getinfo', user: username }) as unknown as LastfmUserInfoResponse
+	return response.user
 }
