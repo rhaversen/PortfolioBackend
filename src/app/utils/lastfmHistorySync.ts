@@ -17,6 +17,7 @@ const {
 const MAX_RETRIES = 5
 const INITIAL_BACKOFF_MS = 1000
 const MAX_BACKOFF_MS = 30_000
+const SPOTIFY_SEARCH_DELAY_MS = 250
 
 export interface LastfmSyncResult {
 	songsResolved: number
@@ -28,68 +29,85 @@ export interface LastfmSyncResult {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
-/**
- * Resolves a Last.fm scrobble to a Song document. Strategy:
- * 1. Check backend cache by normalized artist+name match
- * 2. If not found, search the Spotify catalog (server-to-server) and upsert
- *    the result into the Song collection
- * 3. If the search returns nothing, skip the scrobble
- */
-async function resolveSong (
-	track: LastfmTrack,
-	spotifyAccessToken: string
-): Promise<Types.ObjectId | null> {
-	const artistName = track.artist['#text']
-	const trackName = track.name
-	if (artistName === '' || trackName === '') { return null }
-
-	// 1. Backend cache: look for an existing Song with matching artist + name
-	const existing = await SongModel.findOne({
-		artists: artistName,
-		name: trackName
-	}).exec()
-
-	if (existing !== null) {
-		return existing._id
-	}
-
-	// 2. Spotify search to resolve to a canonical track
-	try {
-		const results = await searchTracks(spotifyAccessToken, artistName, trackName, 1)
-		if (results.length === 0) { return null }
-
-		const spotifyTrack = results[0]
-		const songId = await upsertSong(spotifyTrack)
-		return songId
-	} catch (err: unknown) {
-		const message = err instanceof Error ? err.message : 'Unknown error'
-		logger.warn(`Spotify search failed for "${artistName} - ${trackName}": ${message}`)
-		return null
-	}
+function songCacheKey (artist: string, name: string): string {
+	return `${artist}\0${name}`
 }
 
 /**
  * Stores a batch of Last.fm scrobbles as Song + Listen documents.
- * Each scrobble is resolved to a Song (backend cache → Spotify search).
- * Listens are inserted only if the { userId, songId, playedAt } combination
- * doesn't already exist (enforced by the unique compound index).
+ *
+ * Song resolution strategy:
+ * 1. Batch-check the backend cache with a single MongoDB query for all
+ *    tracks on the page (avoids N individual findOne calls)
+ * 2. For uncached tracks, search the Spotify catalog one at a time with
+ *    throttling (SPOTIFY_SEARCH_DELAY_MS between calls) to avoid 429s
+ * 3. Listens are inserted only if the { userId, songId, playedAt } combination
+ *    doesn't already exist (enforced by the unique compound index)
  */
 async function storeScrobbleBatch (
 	userId: Types.ObjectId,
 	tracks: LastfmTrack[],
 	spotifyAccessToken: string
 ): Promise<{ songsResolved: number, songsSkipped: number, inserted: number, skipped: number }> {
+	// Filter to valid scrobbles: not "now playing", has timestamp, has artist + name
+	const validTracks = tracks.filter((t) =>
+		t['@attr']?.nowplaying !== 'true' &&
+		t.date !== undefined &&
+		t.artist['#text'] !== '' &&
+		t.name !== ''
+	)
+
+	if (validTracks.length === 0) {
+		return { songsResolved: 0, songsSkipped: 0, inserted: 0, skipped: 0 }
+	}
+
+	// Batch cache lookup: single query for all tracks on this page
+	const cacheConditions = validTracks.map((t) => ({
+		artists: t.artist['#text'],
+		name: t.name
+	}))
+	const cachedSongs = await SongModel.find({ $or: cacheConditions }).exec()
+	const songCache = new Map<string, Types.ObjectId>()
+	for (const song of cachedSongs) {
+		const key = songCacheKey(song.artists[0] ?? '', song.name)
+		if (!songCache.has(key)) {
+			songCache.set(key, song._id)
+		}
+	}
+
 	let songsResolved = 0
 	let songsSkipped = 0
 	let inserted = 0
 	let skipped = 0
+	let lastSearchTime = 0
 
-	for (const track of tracks) {
-		// Skip "now playing" tracks — they have no completed timestamp
-		if (track['@attr']?.nowplaying === 'true') { continue }
-		if (track.date === undefined) { continue }
+	for (const track of validTracks) {
+		const artistName = track.artist['#text']
+		const trackName = track.name
+		const key = songCacheKey(artistName, trackName)
 
-		const songId = await resolveSong(track, spotifyAccessToken)
+		let songId = songCache.get(key) ?? null
+
+		if (songId === null) {
+			// Throttle Spotify searches to avoid 429 rate limits
+			const elapsed = Date.now() - lastSearchTime
+			if (elapsed < SPOTIFY_SEARCH_DELAY_MS) {
+				await sleep(SPOTIFY_SEARCH_DELAY_MS - elapsed)
+			}
+
+			try {
+				const results = await searchTracks(spotifyAccessToken, artistName, trackName, 1)
+				if (results.length > 0) {
+					songId = await upsertSong(results[0])
+					songCache.set(key, songId)
+				}
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Unknown error'
+				logger.warn(`Spotify search failed for "${artistName} - ${trackName}": ${message}`)
+			}
+			lastSearchTime = Date.now()
+		}
+
 		if (songId === null) {
 			songsSkipped++
 			continue

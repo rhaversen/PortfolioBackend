@@ -221,9 +221,12 @@ export interface SpotifySearchResponse {
 	}
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
 /**
  * Searches the Spotify catalog for a track by artist + track name.
  * Used to resolve Last.fm scrobbles (which lack Spotify IDs) to Song documents.
+ * Retries on 429 rate limit, respecting the Retry-After header when present.
  */
 export async function searchTracks (
 	accessToken: string,
@@ -237,15 +240,32 @@ export async function searchTracks (
 		limit: String(limit)
 	})
 
-	const res = await fetch(`${SPOTIFY_API_BASE_URL}/search?${query.toString()}`, {
-		headers: { Authorization: `Bearer ${accessToken}` }
-	})
+	const MAX_RETRIES = 5
+	const INITIAL_BACKOFF_MS = 1000
+	const MAX_BACKOFF_MS = 30_000
 
-	if (!res.ok) {
+	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+		const res = await fetch(`${SPOTIFY_API_BASE_URL}/search?${query.toString()}`, {
+			headers: { Authorization: `Bearer ${accessToken}` }
+		})
+
+		if (res.ok) {
+			const json = await res.json() as SpotifySearchResponse
+			return json.tracks.items
+		}
+
 		const errorBody = await res.text()
-		throw new Error(`Spotify search failed (${res.status}): ${errorBody}`)
+
+		if (res.status !== 429 || attempt >= MAX_RETRIES) {
+			throw new Error(`Spotify search failed (${res.status}): ${errorBody}`)
+		}
+
+		const retryAfterHeader = res.headers.get('retry-after')
+		const backoff = retryAfterHeader !== null
+			? Math.min(Number(retryAfterHeader) * 1000, MAX_BACKOFF_MS)
+			: Math.min(INITIAL_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS)
+		await sleep(backoff)
 	}
 
-	const json = await res.json() as SpotifySearchResponse
-	return json.tracks.items
+	return []
 }
