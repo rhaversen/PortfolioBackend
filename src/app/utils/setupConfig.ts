@@ -42,7 +42,19 @@ const AppConfig = {
 	terminatorMaxTokens: config.get('llm.terminatorMaxTokens') as number,
 	oneWordMaxTokens: config.get('llm.oneWordMaxTokens') as number,
 	inputPricePerMillionTokens: config.get('llm.inputPricePerMillionTokens') as number,
-	outputPricePerMillionTokens: config.get('llm.outputPricePerMillionTokens') as number
+	outputPricePerMillionTokens: config.get('llm.outputPricePerMillionTokens') as number,
+	spotifyClientId: process.env.SPOTIFY_CLIENT_ID as string,
+	spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
+	spotifyTokenEncryptionKey: process.env.SPOTIFY_TOKEN_ENCRYPTION_KEY as string,
+	spotifyRedirectUri: config.get('spotify.redirectUri') as string,
+	spotifyScopes: config.get('spotify.scopes') as string,
+	spotifyFrontendRedirectPath: config.get('spotify.frontendRedirectPath') as string,
+	lastfmApiKey: process.env.LASTFM_API_KEY as string,
+	lastfmApiBaseUrl: config.get('lastfm.apiBaseUrl') as string,
+	lastfmFrontendRedirectPath: config.get('lastfm.frontendRedirectPath') as string,
+	lastfmBackfillMaxPages: config.get('lastfm.backfillMaxPages') as number,
+	lastfmPollLimit: config.get('lastfm.pollLimit') as number,
+	lastfmPollIntervalMs: config.get('lastfm.pollIntervalMs') as number
 }
 
 export default AppConfig

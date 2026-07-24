@@ -118,7 +118,7 @@ export default tseslint.config(
 	},
 
 	{
-		files: ['src/test/**/*.ts'],
+		files: ['src/test/**/*.ts', 'src/development/**/*.ts', 'src/app/utils/ngrokDev.ts'],
 		rules: {
 			'n/no-unpublished-import': 'off',
 			'n/no-extraneous-import': 'off',
