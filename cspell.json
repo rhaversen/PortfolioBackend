@@ -35,6 +35,15 @@
         "oneword",
         "conv",
         "derpy",
-        "maxlength"
+        "maxlength",
+        "cryptr",
+        "ngrok",
+        "authtoken",
+        "upsert",
+        "upserts",
+        "upserted",
+        "upserting",
+        "dedup",
+        "dedupe"
     ]
 }

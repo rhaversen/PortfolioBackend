@@ -17,6 +17,8 @@ export interface IUser extends Document {
 	password: string
 	confirmed: boolean
 
+	lastfmUsername?: string
+
 	expirationDate?: Date
 	passwordResetExpirationDate?: Date
 	confirmationCode?: string
@@ -60,6 +62,11 @@ const userSchema = new Schema<IUser>({
 	confirmed: {
 		type: Schema.Types.Boolean,
 		default: false
+	},
+	lastfmUsername: {
+		type: Schema.Types.String,
+		trim: true,
+		default: ''
 	},
 	confirmationCode: {
 		type: Schema.Types.String
