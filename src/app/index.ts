@@ -71,16 +71,22 @@ app.use(passport.initialize())
 app.use(passport.session())
 configurePassport(passport)
 
+const skipServiceProbes = (req: { originalUrl?: string }): boolean =>
+	req.originalUrl?.startsWith('/api/service') === true
+
 const burstLimiter = RateLimit({
 	...config.burstLimiterConfig,
 	standardHeaders: 'draft-7',
-	legacyHeaders: false
+	legacyHeaders: false,
+	skip: skipServiceProbes
 })
 const sustainedLimiter = RateLimit({
 	...config.sustainedLimiterConfig,
 	standardHeaders: 'draft-7',
-	legacyHeaders: false
+	legacyHeaders: false,
+	skip: skipServiceProbes
 })
+
 app.use(burstLimiter)
 app.use(sustainedLimiter)
 
