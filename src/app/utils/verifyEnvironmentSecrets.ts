@@ -19,7 +19,9 @@ const envSecrets = [
 	'SPOTIFY_CLIENT_SECRET',
 	'SPOTIFY_TOKEN_ENCRYPTION_KEY',
 	// Last.fm
-	'LASTFM_API_KEY'
+	'LASTFM_API_KEY',
+	// Logging
+	'BETTERSTACK_LOG_TOKEN'
 ]
 
 const envSecretsDev = [
