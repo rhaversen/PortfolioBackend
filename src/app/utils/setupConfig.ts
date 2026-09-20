@@ -41,6 +41,7 @@ const AppConfig = {
 	agentGiveUpMaxTokens: config.get('llm.agentGiveUpMaxTokens') as number,
 	terminatorMaxTokens: config.get('llm.terminatorMaxTokens') as number,
 	oneWordMaxTokens: config.get('llm.oneWordMaxTokens') as number,
+	selfConvoMaxTokens: config.get('llm.selfConvoMaxTokens') as number,
 	inputPricePerMillionTokens: config.get('llm.inputPricePerMillionTokens') as number,
 	outputPricePerMillionTokens: config.get('llm.outputPricePerMillionTokens') as number,
 	spotifyClientId: process.env.SPOTIFY_CLIENT_ID as string,

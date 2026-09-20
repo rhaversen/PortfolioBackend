@@ -29,6 +29,7 @@ import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
 import { registerOneWordStoryHandlers } from './websockets/oneWordStory.js'
+import { registerSelfConversationHandlers } from './websockets/selfConversation.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
 import { registerTerminatorHandlers } from './websockets/terminator.js'
 
@@ -102,6 +103,7 @@ io.on('connection', (socket) => {
 	registerBrainwashHandlers(io, socket)
 	registerGhostWriterHandlers(io, socket)
 	registerOneWordStoryHandlers(io, socket)
+	registerSelfConversationHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
 	registerTerminatorHandlers(io, socket)
 	socket.on('disconnect', () => {

@@ -70,6 +70,7 @@
 		"agentGiveUpMaxTokens": 2048,
 		"terminatorMaxTokens": 256,
 		"oneWordMaxTokens": 10,
+		"selfConvoMaxTokens": 300,
 		"inputPricePerMillionTokens": 0.80,
 		"outputPricePerMillionTokens": 4.00
 	}
