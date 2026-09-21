@@ -35,6 +35,19 @@
         "oneword",
         "conv",
         "derpy",
-        "maxlength"
+        "maxlength",
+        "cryptr",
+        "ngrok",
+        "authtoken",
+        "Logtail",
+        "logtail",
+        "BETTERSTACK",
+        "jsonl",
+        "upsert",
+        "upserts",
+        "upserted",
+        "upserting",
+        "dedup",
+        "dedupe"
     ]
 }

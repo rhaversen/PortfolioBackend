@@ -15,16 +15,21 @@ import { Server } from 'socket.io'
 
 import globalErrorHandler from './middleware/globalErrorHandler.js'
 import authRoutes from './routes/auth.js'
+import lastfmRoutes from './routes/lastfm.js'
 import serviceRoutes from './routes/service.js'
+import spotifyRoutes from './routes/spotify.js'
 import userRoutes from './routes/users.js'
 import databaseConnector from './utils/databaseConnector.js'
+import { startLastfmHistoryPoller, stopLastfmHistoryPoller } from './utils/lastfmHistoryPoller.js'
 import logger from './utils/logger.js'
 import configurePassport from './utils/passportConfig.js'
 import config from './utils/setupConfig.js'
+import { startSpotifyHistoryPoller, stopSpotifyHistoryPoller } from './utils/spotifyHistoryPoller.js'
 import { registerAgentGiveUpHandlers } from './websockets/agentGiveUp.js'
 import { registerBrainwashHandlers } from './websockets/brainwash.js'
 import { registerGhostWriterHandlers } from './websockets/ghostWriter.js'
 import { registerOneWordStoryHandlers } from './websockets/oneWordStory.js'
+import { registerSelfConversationHandlers } from './websockets/selfConversation.js'
 import { registerSentientUselessBoxHandlers } from './websockets/sentientUselessBox.js'
 import { registerTerminatorHandlers } from './websockets/terminator.js'
 
@@ -92,6 +97,8 @@ app.use(sustainedLimiter)
 
 app.use('/api/service', serviceRoutes)
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/spotify', spotifyRoutes)
+app.use('/api/v1/lastfm', lastfmRoutes)
 app.use('/api/v1/users', userRoutes)
 
 app.use(globalErrorHandler)
@@ -102,6 +109,7 @@ io.on('connection', (socket) => {
 	registerBrainwashHandlers(io, socket)
 	registerGhostWriterHandlers(io, socket)
 	registerOneWordStoryHandlers(io, socket)
+	registerSelfConversationHandlers(io, socket)
 	registerSentientUselessBoxHandlers(io, socket)
 	registerTerminatorHandlers(io, socket)
 	socket.on('disconnect', () => {
@@ -111,10 +119,14 @@ io.on('connection', (socket) => {
 
 server.listen(config.expressPort, () => {
 	logger.info(`Server listening on port ${config.expressPort}`)
+	startSpotifyHistoryPoller()
+	startLastfmHistoryPoller()
 })
 
 export async function shutDown (): Promise<void> {
 	logger.info('Closing server...')
+	stopSpotifyHistoryPoller()
+	stopLastfmHistoryPoller()
 	server.close()
 	if (sessionStore !== undefined) {
 		await sessionStore.close().catch((err: unknown) => logger.error('Error closing session store', { error: err }))
